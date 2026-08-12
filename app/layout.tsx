@@ -18,7 +18,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="en">
       <body>
         {children}
-        <Suspense fallback={null}><AuthModal /></Suspense>
+        <Suspense fallback={null}><AuthModal authenticated={Boolean(user)} /></Suspense>
         <MobileAppNav authenticated={Boolean(user)} />
       </body>
     </html>
