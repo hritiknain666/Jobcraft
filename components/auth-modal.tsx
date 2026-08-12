@@ -27,6 +27,10 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     return query ? `${pathname}?${query}` : pathname;
   }
 
+  function emailRedirectTo() {
+    return `${window.location.origin}/auth/login?message=${encodeURIComponent("Email confirmed. You can log in now.")}`;
+  }
+
   useEffect(() => {
     function handleClick(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -72,7 +76,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     if (!pendingEmail) return setError("Enter the same email you used to sign up first.");
     setLoading(true);
     setError("");
-    const { error: resendError } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
+    const { error: resendError } = await supabase.auth.resend({ type: "signup", email: pendingEmail, options: { emailRedirectTo: emailRedirectTo() } });
     setLoading(false);
     if (resendError) return setError(resendError.message);
     setMessage("Confirmation email sent again. Check your inbox and spam folder.");
@@ -98,7 +102,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     }
 
     const fullName = String(form.get("fullName") ?? "").trim();
-    const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName }, emailRedirectTo: emailRedirectTo() } });
     setLoading(false);
     if (authError) return setError(authError.message);
     if (data.session) {
