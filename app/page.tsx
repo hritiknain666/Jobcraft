@@ -1,12 +1,7 @@
 import Link from "next/link";
 import ProductShowcase from "@/components/product-showcase";
-
-const pillars = [
-  ["01", "Find signal, not noise", "Search by role, salary, experience, city, skills and work mode — then focus on jobs worth your time."],
-  ["02", "Know why a role fits", "See the match signals behind a role instead of relying on a mysterious percentage alone."],
-  ["03", "Reuse your career proof", "Keep resumes, projects and certificates organised so each application starts from facts you already trust."],
-  ["04", "Keep momentum visible", "Track saved roles, applications, interviews and offers in one simple workflow."],
-];
+import BestOfJobCraft from "@/components/best-of-jobcraft";
+import WhyJobCraftMotion from "@/components/why-jobcraft-motion";
 
 export default function Home() {
   return <main className="min-h-screen overflow-hidden bg-[#f8f8fc] text-[#090d1f]">
@@ -49,13 +44,10 @@ export default function Home() {
     <section className="border-y border-slate-200/70 bg-[#fafafe]"><div className="mx-auto grid max-w-[1380px] gap-3 px-5 py-5 text-sm sm:grid-cols-2 sm:px-8 lg:grid-cols-4">{["Discover better-fit roles","Understand match signals","Tailor truthful resumes","Track every application"].map((x,i)=><div key={x} className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 font-black shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50 text-xs text-violet-700">0{i+1}</span>{x}</div>)}</div></section>
 
     <ProductShowcase />
+    <BestOfJobCraft />
+    <WhyJobCraftMotion />
 
-    <section className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 lg:py-24">
-      <div className="grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-end"><div><p className="text-xs font-black tracking-[.18em] text-violet-600">WHY JOBCRAFT EXISTS</p><h2 className="mt-4 text-4xl font-black tracking-[-.045em] sm:text-5xl">A calmer way to run a serious job search.</h2></div><p className="max-w-2xl text-lg leading-8 text-slate-600">The goal is not to give you more tabs, more noise or a fake sense of intelligence. It is to make the next useful action obvious.</p></div>
-      <div className="mt-12 grid gap-4 md:grid-cols-2">{pillars.map(([num,title,text])=><article key={num} className="group rounded-[26px] border border-slate-200 bg-white p-7 transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_22px_60px_rgba(15,23,42,.08)]"><div className="flex items-center justify-between"><span className="text-xs font-black tracking-[.15em] text-violet-600">{num}</span><span className="h-8 w-8 rounded-full border border-slate-200 transition group-hover:border-violet-200 group-hover:bg-violet-50"/></div><h3 className="mt-8 text-2xl font-black tracking-tight">{title}</h3><p className="mt-3 max-w-xl leading-7 text-slate-600">{text}</p></article>)}</div>
-    </section>
-
-    <section className="mx-auto max-w-[1380px] px-5 pb-20 sm:px-8"><div className="relative overflow-hidden rounded-[32px] bg-[#090d1f] px-7 py-12 text-white sm:px-12 lg:flex lg:items-center lg:justify-between lg:py-14"><div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl"/><div className="relative"><p className="text-xs font-black tracking-[.18em] text-violet-300">START YOUR WORKSPACE</p><h2 className="mt-4 max-w-2xl text-4xl font-black tracking-[-.04em]">Build your profile once. Make every next application easier.</h2><p className="mt-4 max-w-xl leading-7 text-slate-300">Start with the core workflow today. Smarter AI assistance can enhance it later without replacing the facts you control.</p></div><Link href="/?auth=signup" scroll={false} className="relative mt-8 inline-block shrink-0 rounded-xl bg-white px-7 py-4 font-black text-slate-950 transition hover:-translate-y-0.5 lg:mt-0">Create free account →</Link></div></section>
+    <section className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8"><div className="relative overflow-hidden rounded-[32px] bg-[#090d1f] px-7 py-12 text-white sm:px-12 lg:flex lg:items-center lg:justify-between lg:py-14"><div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl"/><div className="relative"><p className="text-xs font-black tracking-[.18em] text-violet-300">START YOUR WORKSPACE</p><h2 className="mt-4 max-w-2xl text-4xl font-black tracking-[-.04em]">Build your profile once. Make every next application easier.</h2><p className="mt-4 max-w-xl leading-7 text-slate-300">Start with the core workflow today. Smarter AI assistance can enhance it later without replacing the facts you control.</p></div><Link href="/?auth=signup" scroll={false} className="relative mt-8 inline-block shrink-0 rounded-xl bg-white px-7 py-4 font-black text-slate-950 transition hover:-translate-y-0.5 lg:mt-0">Create free account →</Link></div></section>
 
     <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-[1380px] flex-col gap-5 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8"><div><b className="text-lg text-slate-950">Job<span className="text-violet-600">Craft</span></b><p className="mt-1">Career tools designed for India.</p></div><div className="flex flex-wrap gap-6 font-semibold"><Link href="/jobs">Jobs</Link><Link href="/resume">Resume</Link><Link href="/applications">Applications</Link><Link href="/career-assistant">Career Assistant</Link></div></div></footer>
   </main>;
