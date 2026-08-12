@@ -2,6 +2,7 @@ import Link from "next/link";
 import ProductShowcase from "@/components/product-showcase";
 import BestOfJobCraft from "@/components/best-of-jobcraft";
 import WhyJobCraftMotion from "@/components/why-jobcraft-motion";
+import HeroProductVisual from "@/components/hero-product-visual";
 
 export default function Home() {
   return <main className="min-h-screen overflow-hidden bg-[#f8f8fc] text-[#090d1f]">
@@ -13,31 +14,18 @@ export default function Home() {
       </div>
     </header>
 
-    <section className="relative bg-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(124,58,237,.14),transparent_30%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,.09),transparent_28%)]"/>
-      <div className="relative mx-auto grid max-w-[1380px] gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-24">
+    <section className="relative overflow-hidden bg-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(124,58,237,.16),transparent_30%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,.10),transparent_28%)]"/>
+      <div className="absolute left-1/2 top-12 h-[520px] w-[520px] -translate-x-1/2 rounded-full border border-violet-100/60"/>
+      <div className="relative mx-auto grid max-w-[1380px] gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[.95fr_1.05fr] lg:items-center lg:py-20 xl:py-24">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-violet-50/90 px-4 py-2 text-sm font-bold text-violet-700"><span className="h-2 w-2 rounded-full bg-violet-500"/>Career workspace built for India</div>
-          <h1 className="mt-7 text-[3.35rem] font-black leading-[.96] tracking-[-.06em] sm:text-6xl lg:text-[5.4rem]">Stop guessing.<br/><span className="bg-gradient-to-r from-violet-600 via-indigo-500 to-violet-500 bg-clip-text text-transparent">Apply with context.</span></h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">JobCraft helps you discover roles, understand your fit, prepare the right resume version and keep every application moving — in one focused workspace.</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Link href="/jobs" className="rounded-xl bg-violet-600 px-7 py-4 text-center font-black text-white shadow-xl shadow-violet-200/60 transition hover:-translate-y-0.5 hover:bg-violet-700">Explore jobs →</Link><Link href="/resume" className="rounded-xl border border-slate-200 bg-white px-7 py-4 text-center font-black shadow-sm transition hover:border-slate-300">See resume tools</Link></div>
-          <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">{[["India-first","Salary, city & work-mode filters"],["Transparent","Explainable match signals"],["Grounded","No fabricated experience"]].map(([title,text])=><div key={title} className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur"><p className="text-sm font-black">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{text}</p></div>)}</div>
+          <h1 className="mt-7 text-[3.35rem] font-black leading-[.95] tracking-[-.065em] sm:text-6xl xl:text-[5.6rem]">Stop guessing.<br/><span className="bg-gradient-to-r from-violet-600 via-indigo-500 to-violet-500 bg-clip-text text-transparent">Apply with context.</span></h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">Discover roles, understand the match, prepare the right resume version and keep every application moving — without turning your job search into five disconnected tools.</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Link href="/jobs" className="rounded-xl bg-violet-600 px-7 py-4 text-center font-black text-white shadow-xl shadow-violet-200/60 transition hover:-translate-y-0.5 hover:bg-violet-700">Explore jobs →</Link><Link href="/resume" className="rounded-xl border border-slate-200 bg-white px-7 py-4 text-center font-black shadow-sm transition hover:border-violet-200 hover:shadow-lg">See resume tools</Link></div>
+          <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">{[["India-first","Salary, city & work-mode context"],["Transparent","Explainable match signals"],["Grounded","No fabricated experience"]].map(([title,text])=><div key={title} className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur"><p className="text-sm font-black">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{text}</p></div>)}</div>
         </div>
-
-        <div className="relative mx-auto w-full max-w-xl">
-          <div className="absolute inset-10 rounded-full bg-violet-200/50 blur-3xl"/>
-          <div className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_40px_110px_rgba(15,23,42,.17)]">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#090d1f] text-[11px] font-black text-white">JC</span><div><p className="text-sm font-black">Your job search</p><p className="text-[11px] text-slate-400">Illustrative product preview</p></div></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-700">PROFILE READY</span></div>
-            <div className="p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-5"><div><p className="text-xs font-black tracking-[.12em] text-violet-600">TOP MATCH</p><p className="mt-2 text-sm font-bold text-slate-400">Sample role</p><h2 className="mt-1 text-3xl font-black tracking-tight">Data Analyst</h2><p className="mt-2 text-sm text-slate-500">Bengaluru · Hybrid · ₹5.5–8.5 LPA</p></div><div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[8px] border-emerald-100 bg-emerald-50 text-xl font-black text-emerald-600">87%</div></div>
-              <div className="mt-5 flex flex-wrap gap-2">{["SQL ✓","Power BI ✓","Excel ✓"].map(x=><span key={x} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">{x}</span>)}<span className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">Tableau missing</span></div>
-              <div className="mt-5 rounded-2xl bg-slate-50 p-4"><div className="flex items-center justify-between text-sm"><span className="font-black">Strong fit</span><span className="font-bold text-emerald-600">87%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full w-[87%] rounded-full bg-emerald-500"/></div><p className="mt-3 text-xs leading-5 text-slate-500">Matched skills, experience and preferences are visible before you apply.</p></div>
-            </div>
-            <div className="grid grid-cols-4 border-t border-slate-100 bg-[#fafafe]">{[["Saved","12"],["Applied","8"],["Interview","3"],["Offer","1"]].map(([label,value])=><div key={label} className="border-r border-slate-100 px-3 py-4 last:border-r-0"><p className="text-[9px] font-black tracking-wide text-slate-400">{label.toUpperCase()}</p><p className="mt-1 text-xl font-black">{value}</p></div>)}</div>
-          </div>
-          <div className="absolute -bottom-5 -left-3 hidden rounded-2xl border border-violet-100 bg-white px-4 py-3 shadow-xl sm:block"><p className="text-[10px] font-black text-violet-600">RESUME SIGNAL</p><p className="mt-1 text-sm font-black">Certificate ready ✓</p></div>
-          <div className="absolute -right-3 top-20 hidden rounded-2xl border border-slate-200 bg-[#090d1f] px-4 py-3 text-white shadow-xl sm:block"><p className="text-[10px] font-black text-violet-300">NEXT STEP</p><p className="mt-1 text-sm font-black">Review role →</p></div>
-        </div>
+        <HeroProductVisual />
       </div>
     </section>
 
