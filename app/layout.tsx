@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import MobileAppNav from "@/components/mobile-app-nav";
+import AuthModal from "@/components/auth-modal";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 
@@ -16,6 +18,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="en">
       <body>
         {children}
+        <Suspense fallback={null}><AuthModal /></Suspense>
         <MobileAppNav authenticated={Boolean(user)} />
       </body>
     </html>
