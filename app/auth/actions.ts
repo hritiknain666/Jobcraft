@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+const FALLBACK_SITE_URL = "https://jobcraft.hritiknain666-35e.workers.dev";
+
 function verificationOptions() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  return siteUrl ? { emailRedirectTo: `${siteUrl}/auth/login?message=${encodeURIComponent("Email confirmed. You can log in now.")}` } : undefined;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || FALLBACK_SITE_URL).replace(/\/$/, "");
+  return { emailRedirectTo: `${siteUrl}/auth/login?message=${encodeURIComponent("Email confirmed. You can log in now.")}` };
 }
 
 export async function login(formData: FormData) {
