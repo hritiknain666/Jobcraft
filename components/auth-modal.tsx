@@ -1,0 +1,88 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+export default function AuthModal() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("auth");
+  const isOpen = mode === "login" || mode === "signup";
+  const supabase = useMemo(() => createClient(), []);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  function hrefFor(nextMode?: "login" | "signup") {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextMode) params.set("auth", nextMode); else params.delete("auth");
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }
+
+  function close() {
+    setError("");
+    setMessage("");
+    router.replace(hrefFor(), { scroll: false });
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    setLoading(true);
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+
+    if (mode === "login") {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (authError) return setError(authError.message);
+      router.replace("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    const fullName = String(form.get("fullName") ?? "").trim();
+    const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    setLoading(false);
+    if (authError) return setError(authError.message);
+    setMessage("Account created. Check your email to confirm your account, then log in.");
+  }
+
+  return <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6">
+    <button aria-label="Close authentication modal" onClick={close} className="absolute inset-0 bg-slate-950/45 backdrop-blur-[3px]" />
+    <section role="dialog" aria-modal="true" aria-labelledby="auth-title" className="relative z-10 w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_35px_100px_rgba(15,23,42,.28)]">
+      <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm font-black text-white">JC</span><span className="text-xl font-black">Job<span className="text-violet-600">Craft</span></span></div>
+          <button onClick={close} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg font-black text-slate-500 hover:bg-slate-200">×</button>
+        </div>
+      </div>
+
+      <div className="px-6 py-7 sm:px-8 sm:py-8">
+        <p className="text-xs font-black tracking-[.14em] text-violet-600">{mode === "login" ? "WELCOME BACK" : "CREATE YOUR WORKSPACE"}</p>
+        <h2 id="auth-title" className="mt-2 text-3xl font-black tracking-[-.035em]">{mode === "login" ? "Continue your JobCraft search." : "Start your JobCraft workspace."}</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "login" ? "Your jobs, resumes, certificates and applications stay connected in one place." : "Create an account to save your profile, resumes, certificates and applications."}</p>
+
+        {error && <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        {message && <div className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
+
+        <form onSubmit={submit} className="mt-6 space-y-4">
+          {mode === "signup" && <label className="block text-sm font-black">Full name<input name="fullName" required autoComplete="name" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>}
+          <label className="block text-sm font-black">Email<input name="email" type="email" required autoComplete="email" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
+          <label className="block text-sm font-black">Password<input name="password" type="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
+          <button disabled={loading} className="w-full rounded-xl bg-[#090d1f] px-5 py-3.5 font-black text-white transition hover:bg-violet-600 disabled:opacity-60">{loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">{mode === "login" ? "New to JobCraft?" : "Already have an account?"} <button onClick={() => { setError(""); setMessage(""); router.replace(hrefFor(mode === "login" ? "signup" : "login"), { scroll: false }); }} className="font-black text-violet-600">{mode === "login" ? "Create one" : "Log in"}</button></p>
+        <p className="mt-5 text-center text-[11px] leading-5 text-slate-400">By continuing, you agree to use JobCraft responsibly and keep profile information accurate.</p>
+      </div>
+    </section>
+  </div>;
+}
