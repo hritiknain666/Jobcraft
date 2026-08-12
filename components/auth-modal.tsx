@@ -18,6 +18,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
 
   function hrefFor(nextMode?: "login" | "signup") {
     const params = new URLSearchParams(searchParams.toString());
@@ -63,7 +64,18 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
   function close() {
     setError("");
     setMessage("");
+    setPendingEmail("");
     router.replace(hrefFor(), { scroll: false });
+  }
+
+  async function resend() {
+    if (!pendingEmail) return setError("Enter the same email you used to sign up first.");
+    setLoading(true);
+    setError("");
+    const { error: resendError } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
+    setLoading(false);
+    if (resendError) return setError(resendError.message);
+    setMessage("Confirmation email sent again. Check your inbox and spam folder.");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -74,6 +86,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
+    setPendingEmail(email);
 
     if (mode === "login") {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
@@ -85,10 +98,15 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     }
 
     const fullName = String(form.get("fullName") ?? "").trim();
-    const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
     setLoading(false);
     if (authError) return setError(authError.message);
-    setMessage("Account created. Check your email to confirm your account, then log in.");
+    if (data.session) {
+      router.replace("/dashboard");
+      router.refresh();
+      return;
+    }
+    setMessage("Account created. Check your inbox or spam folder to confirm your email. If it does not arrive, resend it below.");
   }
 
   return <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6">
@@ -106,8 +124,8 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
         <h2 id="auth-title" className="mt-2 text-3xl font-black tracking-[-.035em]">{mode === "login" ? "Continue your JobCraft search." : "Start your JobCraft workspace."}</h2>
         <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "login" ? "Your jobs, resumes, certificates and applications stay connected in one place." : "Create an account to save your profile, resumes, certificates and applications."}</p>
 
-        {error && <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-        {message && <div className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
+        {error && <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm leading-6 text-red-700">{error}</div>}
+        {message && <div className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-800">{message}</div>}
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           {mode === "signup" && <label className="block text-sm font-black">Full name<input name="fullName" required autoComplete="name" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>}
@@ -115,6 +133,8 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
           <label className="block text-sm font-black">Password<input name="password" type="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
           <button disabled={loading} className="w-full rounded-xl bg-[#090d1f] px-5 py-3.5 font-black text-white transition hover:bg-violet-600 disabled:opacity-60">{loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</button>
         </form>
+
+        {pendingEmail && message && <div className="mt-4 rounded-xl border border-violet-100 bg-violet-50/70 p-3.5 text-sm text-violet-900"><p className="font-black">No email yet?</p><p className="mt-1 text-xs leading-5 text-violet-700">Check spam first, then resend the confirmation to <b>{pendingEmail}</b>.</p><button type="button" disabled={loading} onClick={resend} className="mt-3 rounded-lg bg-white px-3.5 py-2 text-xs font-black text-violet-700 shadow-sm ring-1 ring-violet-200 disabled:opacity-60">Resend confirmation</button></div>}
 
         <p className="mt-6 text-center text-sm text-slate-500">{mode === "login" ? "New to JobCraft?" : "Already have an account?"} <button onClick={() => { setError(""); setMessage(""); router.replace(hrefFor(mode === "login" ? "signup" : "login"), { scroll: false }); }} className="font-black text-violet-600">{mode === "login" ? "Create one" : "Log in"}</button></p>
         <p className="mt-5 text-center text-[11px] leading-5 text-slate-400">By continuing, you agree to use JobCraft responsibly and keep profile information accurate.</p>
