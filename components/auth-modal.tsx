@@ -1,10 +1,14 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AuthModal() {
+type AuthModalProps = { authenticated: boolean };
+
+const protectedPaths = ["/dashboard", "/applications", "/profile", "/certificates", "/cover-letter", "/resume/builder", "/resume/tailor"];
+
+export default function AuthModal({ authenticated }: AuthModalProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -15,14 +19,46 @@ export default function AuthModal() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
-
   function hrefFor(nextMode?: "login" | "signup") {
     const params = new URLSearchParams(searchParams.toString());
     if (nextMode) params.set("auth", nextMode); else params.delete("auth");
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
   }
+
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target as Element | null;
+      const anchor = target?.closest("a");
+      if (!anchor) return;
+      const url = new URL(anchor.href, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+
+      let nextMode: "login" | "signup" | null = null;
+      if (url.pathname === "/auth/login") nextMode = "login";
+      if (url.pathname === "/auth/signup") nextMode = "signup";
+      if (!authenticated && protectedPaths.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`))) nextMode = "login";
+      if (!nextMode) return;
+
+      event.preventDefault();
+      setError("");
+      setMessage("");
+      router.replace(hrefFor(nextMode), { scroll: false });
+    }
+
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [authenticated, pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   function close() {
     setError("");
