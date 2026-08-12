@@ -1,33 +1,29 @@
 import Link from "next/link";
+import AuthPageShell from "@/components/auth-page-shell";
 import { signup } from "../actions";
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-16">
-      <div className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <Link href="/" className="text-2xl font-black text-indigo-600">JobCraft</Link>
-        <h1 className="mt-8 text-3xl font-black">Create your account</h1>
-        <p className="mt-2 text-slate-600">Start building a smarter job search profile.</p>
+    <AuthPageShell mode="signup">
+      {params.error && <p className="mt-5 rounded-2xl border border-red-100 bg-red-50 p-3.5 text-sm text-red-700">{params.error}</p>}
 
-        {params.error && <p className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">{params.error}</p>}
+      <form action={signup} className="mt-7 space-y-4">
+        <label className="block text-sm font-black">Full name
+          <input name="fullName" type="text" required autoComplete="name" placeholder="Your full name" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+        </label>
+        <label className="block text-sm font-black">Email
+          <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+        </label>
+        <label className="block text-sm font-black">Password
+          <input name="password" type="password" required minLength={6} autoComplete="new-password" placeholder="At least 6 characters" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+          <span className="mt-2 block text-xs font-normal leading-5 text-slate-400">Use a password you do not reuse elsewhere.</span>
+        </label>
+        <button className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 font-black text-white shadow-[0_16px_35px_rgba(124,58,237,.25)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_45px_rgba(124,58,237,.32)]">Create free account →</button>
+      </form>
 
-        <form action={signup} className="mt-8 space-y-5">
-          <label className="block text-sm font-bold">Full name
-            <input name="fullName" type="text" required className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500" />
-          </label>
-          <label className="block text-sm font-bold">Email
-            <input name="email" type="email" required className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500" />
-          </label>
-          <label className="block text-sm font-bold">Password
-            <input name="password" type="password" required minLength={6} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500" />
-          </label>
-          <button className="w-full rounded-xl bg-indigo-600 px-5 py-3.5 font-bold text-white hover:bg-indigo-700">Create account</button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-slate-600">Already registered? <Link href="/auth/login" className="font-bold text-indigo-600">Log in</Link></p>
-      </div>
-    </main>
+      <p className="mt-6 text-center text-sm text-slate-500">Already registered? <Link href="/auth/login" className="font-black text-violet-600 hover:text-violet-700">Log in</Link></p>
+    </AuthPageShell>
   );
 }
