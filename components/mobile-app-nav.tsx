@@ -1,8 +1,7 @@
-import Link from "next/link";
+"use client";
 
-type MobileAppNavProps = {
-  current?: "home" | "jobs" | "applications" | "resume" | "more";
-};
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const primaryItems = [
   { key: "home", label: "Home", href: "/dashboard", icon: "⌂" },
@@ -11,7 +10,25 @@ const primaryItems = [
   { key: "resume", label: "Resume", href: "/resume", icon: "▤" },
 ] as const;
 
-export default function MobileAppNav({ current }: MobileAppNavProps) {
+const morePaths = ["/profile", "/certificates", "/career-assistant", "/cover-letter"];
+
+export default function MobileAppNav() {
+  const pathname = usePathname();
+  const hidden = pathname === "/" || pathname.startsWith("/auth/");
+  if (hidden) return null;
+
+  const activeKey = pathname.startsWith("/dashboard")
+    ? "home"
+    : pathname.startsWith("/jobs")
+      ? "jobs"
+      : pathname.startsWith("/applications")
+        ? "applications"
+        : pathname.startsWith("/resume")
+          ? "resume"
+          : morePaths.some((path) => pathname.startsWith(path))
+            ? "more"
+            : undefined;
+
   return (
     <>
       <div className="h-24 md:hidden" aria-hidden="true" />
@@ -21,14 +38,12 @@ export default function MobileAppNav({ current }: MobileAppNavProps) {
       >
         <div className="mx-auto grid max-w-lg grid-cols-5 items-end">
           {primaryItems.map((item) => {
-            const active = current === item.key;
+            const active = activeKey === item.key;
             return (
               <Link
                 key={item.key}
                 href={item.href}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-bold transition ${
-                  active ? "bg-violet-50 text-violet-700" : "text-slate-500 active:bg-slate-100"
-                }`}
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-bold transition ${active ? "bg-violet-50 text-violet-700" : "text-slate-500 active:bg-slate-100"}`}
               >
                 <span className="text-xl leading-none" aria-hidden="true">{item.icon}</span>
                 <span>{item.label}</span>
@@ -37,11 +52,7 @@ export default function MobileAppNav({ current }: MobileAppNavProps) {
           })}
 
           <details className="group relative">
-            <summary
-              className={`flex min-h-14 cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-bold [&::-webkit-details-marker]:hidden ${
-                current === "more" ? "bg-violet-50 text-violet-700" : "text-slate-500 active:bg-slate-100"
-              }`}
-            >
+            <summary className={`flex min-h-14 cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-bold [&::-webkit-details-marker]:hidden ${activeKey === "more" ? "bg-violet-50 text-violet-700" : "text-slate-500 active:bg-slate-100"}`}>
               <span className="text-xl leading-none" aria-hidden="true">•••</span>
               <span>More</span>
             </summary>
