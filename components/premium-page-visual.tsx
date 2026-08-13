@@ -3,66 +3,105 @@
 import { useEffect, useState } from "react";
 
 type Variant = "dashboard" | "jobs" | "resume" | "applications" | "assistant";
+type PremiumPageVisualProps = { variant: Variant; compact?: boolean };
 
-type PremiumPageVisualProps = {
-  variant: Variant;
-  compact?: boolean;
-};
-
-const frames: Record<Variant, { eyebrow: string; title: string; note: string; chips: string[]; accent: string }[]> = {
-  dashboard: [
-    { eyebrow: "NEXT BEST ACTION", title: "Review your strongest matches", note: "Use your profile, resume and activity to focus the search.", chips: ["87% match", "3 interviews", "Resume ready"], accent: "bg-violet-500" },
-    { eyebrow: "CAREER MOMENTUM", title: "One workspace, fewer loose ends", note: "Jobs, resumes, applications and guidance stay connected.", chips: ["Saved 12", "Applied 8", "Offer 1"], accent: "bg-emerald-500" },
-  ],
-  jobs: [
-    { eyebrow: "MATCH SIGNAL", title: "Data Analyst · 87%", note: "SQL, Power BI and Excel align. Tableau is the visible gap.", chips: ["SQL ✓", "Power BI ✓", "Tableau gap"], accent: "bg-emerald-500" },
-    { eyebrow: "SEARCH CONTEXT", title: "Filter the noise before you apply", note: "Salary, experience, city, work mode and skills stay visible.", chips: ["Hybrid", "₹5.5–8.5 LPA", "2 yrs"], accent: "bg-violet-500" },
-  ],
-  resume: [
-    { eyebrow: "RESUME VERSION", title: "Data Analyst Resume", note: "ATS-friendly, factual and ready for the roles you are targeting.", chips: ["Primary", "ATS-ready", "4 certificates"], accent: "bg-violet-500" },
-    { eyebrow: "TRUTHFUL TAILORING", title: "Change emphasis, never invent facts", note: "JobCraft should only use experience, skills and proof you actually supplied.", chips: ["SQL", "Power BI", "Projects"], accent: "bg-emerald-500" },
-  ],
-  applications: [
-    { eyebrow: "PIPELINE", title: "Keep every opportunity moving", note: "See where applications stall and what needs your attention next.", chips: ["Applied 8", "Interview 3", "Offer 1"], accent: "bg-violet-500" },
-    { eyebrow: "FOLLOW-THROUGH", title: "Your search should not disappear into tabs", note: "Track stage changes in one place instead of relying on memory.", chips: ["Saved", "Screening", "Interview"], accent: "bg-emerald-500" },
-  ],
-  assistant: [
-    { eyebrow: "CAREER SIGNAL", title: "Close repeated skill gaps first", note: "Prioritise gaps that show up across several strong-fit roles.", chips: ["SQL strong", "Tableau gap", "Cloud gap"], accent: "bg-violet-500" },
-    { eyebrow: "NEXT PRIORITY", title: "Improve application conversion", note: "Use your own tracker data to decide what to change next.", chips: ["5 applied", "1 interview", "20% rate"], accent: "bg-emerald-500" },
-  ],
+const variants: Record<Variant, { label: string; accent: string; title: string; subtitle: string }> = {
+  dashboard: { label: "WORKSPACE", accent: "bg-violet-500", title: "Your next best move", subtitle: "Jobs, resumes and applications stay connected." },
+  jobs: { label: "JOB MATCH", accent: "bg-emerald-500", title: "See the fit before you apply", subtitle: "Skills, salary, work mode and gaps in one view." },
+  resume: { label: "RESUME STUDIO", accent: "bg-sky-500", title: "Build the right version", subtitle: "Keep the facts, change the emphasis." },
+  applications: { label: "APPLICATION FLOW", accent: "bg-violet-500", title: "Know exactly where things stand", subtitle: "Move every role from saved to outcome." },
+  assistant: { label: "CAREER GUIDE", accent: "bg-amber-400", title: "Know what to improve next", subtitle: "Turn real activity into clear priorities." },
 };
 
 export default function PremiumPageVisual({ variant, compact = false }: PremiumPageVisualProps) {
-  const [index, setIndex] = useState(0);
-  const items = frames[variant];
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setIndex((current) => (current + 1) % items.length), 4200);
+    const timer = window.setInterval(() => setStep((value) => (value + 1) % 4), 2600);
     return () => window.clearInterval(timer);
-  }, [items.length]);
+  }, []);
 
-  const active = items[index];
+  const meta = variants[variant];
 
-  return <div className={`relative overflow-hidden rounded-[28px] border border-white/10 bg-[#090d1f] text-white shadow-[0_30px_90px_rgba(15,23,42,.20)] ${compact ? "p-5" : "p-6 sm:p-7"}`}>
-    <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
-    <div className="absolute -bottom-20 left-1/4 h-48 w-48 rounded-full bg-sky-500/10 blur-3xl" />
+  return (
+    <div className={`relative overflow-hidden rounded-[30px] border border-white/10 bg-[#0a1024] text-white shadow-[0_30px_90px_rgba(15,23,42,.22)] ${compact ? "p-5" : "p-6 sm:p-7"}`}>
+      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-violet-500/25 blur-3xl" />
+      <div className="absolute -bottom-24 left-12 h-56 w-56 rounded-full bg-sky-400/10 blur-3xl" />
 
-    <div className="relative">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-[10px] font-black tracking-[.18em] text-violet-300"><span className={`h-2 w-2 rounded-full ${active.accent} jc-pulse`} />LIVE PRODUCT SIGNAL</div>
-        <div className="flex gap-1.5">{items.map((_, i) => <button key={i} aria-label={`Show product signal ${i + 1}`} onClick={() => setIndex(i)} className={`h-1.5 rounded-full transition-all ${i === index ? "w-7 bg-white" : "w-2 bg-white/25"}`} />)}</div>
+      <div className="relative">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-[10px] font-black tracking-[.18em] text-violet-200">
+            <span className={`h-2 w-2 rounded-full ${meta.accent} pulse-dot`} />
+            {meta.label}
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/[.07] px-3 py-1 text-[10px] font-black text-white/60">LIVE PREVIEW</div>
+        </div>
+
+        <div className="mt-5">
+          <h3 className={`${compact ? "text-2xl" : "text-3xl sm:text-[2rem]"} font-black tracking-[-.04em]`}>{meta.title}</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{meta.subtitle}</p>
+        </div>
+
+        <div className="mt-6">
+          {variant === "jobs" && <JobsScene step={step} />}
+          {variant === "resume" && <ResumeScene step={step} />}
+          {variant === "applications" && <ApplicationsScene step={step} />}
+          {variant === "assistant" && <AssistantScene step={step} />}
+          {variant === "dashboard" && <DashboardScene step={step} />}
+        </div>
       </div>
 
-      <div key={`${variant}-${index}`} className="jc-rise mt-7">
-        <p className="text-xs font-black tracking-[.15em] text-violet-300">{active.eyebrow}</p>
-        <h3 className={`${compact ? "text-2xl" : "text-3xl sm:text-[2rem]"} mt-2 font-black tracking-[-.04em]`}>{active.title}</h3>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">{active.note}</p>
-        <div className="mt-5 flex flex-wrap gap-2">{active.chips.map((chip) => <span key={chip} className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-white/90 backdrop-blur">{chip}</span>)}</div>
-      </div>
-
-      <div className="mt-7 grid grid-cols-4 gap-2">
-        {[32, 66, 48, 84].map((height, i) => <div key={i} className="flex h-16 items-end rounded-xl bg-white/[.05] p-2"><div className={`w-full rounded-lg ${i === 3 ? "bg-violet-400" : "bg-white/20"}`} style={{ height: `${height}%` }} /></div>)}
-      </div>
+      <style jsx>{`
+        @keyframes pulseDot { 0%,100% { opacity:.5; transform:scale(.9); } 50% { opacity:1; transform:scale(1.15); } }
+        @keyframes floatPanel { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+        .pulse-dot { animation:pulseDot 1.8s ease-in-out infinite; }
+        .float-panel { animation:floatPanel 5s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .pulse-dot,.float-panel { animation:none !important; } }
+      `}</style>
     </div>
+  );
+}
+
+function JobsScene({ step }: { step: number }) {
+  const roles = [
+    ["Data Analyst", "87%", "SQL · Power BI · Excel"],
+    ["Business Analyst", "81%", "SQL · Jira · Agile"],
+    ["Power BI Developer", "76%", "Power BI · DAX · SQL"],
+    ["Graduate Analyst", "72%", "Excel · SQL · Communication"],
+  ];
+  const current = roles[step];
+  return <div className="grid gap-3 sm:grid-cols-[1fr_128px]">
+    <div className="float-panel rounded-[22px] border border-white/10 bg-white/[.07] p-4 backdrop-blur">
+      <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black text-violet-200">SAMPLE ROLE</p><p className="mt-1 text-lg font-black">{current[0]}</p><p className="mt-1 text-xs text-white/45">Bengaluru · Hybrid · ₹5.5–8.5 LPA</p></div><div className="flex h-14 w-14 items-center justify-center rounded-full border-[6px] border-emerald-400/25 bg-emerald-400/10 text-sm font-black text-emerald-300">{current[1]}</div></div>
+      <div className="mt-4 flex flex-wrap gap-2">{current[2].split(" · ").map((skill)=><span key={skill} className="rounded-lg bg-emerald-400/10 px-2.5 py-1.5 text-[10px] font-black text-emerald-200">{skill} ✓</span>)}<span className="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-[10px] font-black text-amber-200">1 gap</span></div>
+    </div>
+    <div className="grid grid-rows-3 gap-2">{["Match","Resume","Save"].map((item,i)=><div key={item} className={`rounded-xl border p-3 text-xs font-black transition ${i===step%3?"border-violet-400/30 bg-violet-400/15 text-white":"border-white/10 bg-white/[.05] text-white/45"}`}>{i+1}. {item}</div>)}</div>
   </div>;
+}
+
+function ResumeScene({ step }: { step: number }) {
+  const sections = ["Summary","Skills","Experience","Certificates"];
+  return <div className="grid gap-3 sm:grid-cols-[.8fr_1.2fr]">
+    <div className="rounded-[20px] border border-white/10 bg-white/[.06] p-4"><p className="text-[10px] font-black text-sky-200">ROLE</p><p className="mt-2 font-black">Data Analyst</p><div className="mt-4 space-y-2">{["SQL","Power BI","Excel"].map((x)=><div key={x} className="rounded-lg bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-200">{x} ✓</div>)}<div className="rounded-lg bg-amber-400/10 px-3 py-2 text-xs font-black text-amber-200">Tableau gap</div></div></div>
+    <div className="float-panel rounded-[20px] bg-white p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[9px] font-black tracking-[.13em] text-violet-600">RESUME PREVIEW</p><p className="mt-1 font-black">Data Analyst Resume</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black">ATS</span></div><div className="mt-4 space-y-2">{sections.map((x,i)=><div key={x} className={`rounded-xl px-3 py-2 text-xs font-bold transition ${i===step?"bg-violet-50 text-violet-700 ring-1 ring-violet-100":"bg-slate-50 text-slate-500"}`}>{x}</div>)}</div></div>
+  </div>;
+}
+
+function ApplicationsScene({ step }: { step: number }) {
+  const stages = ["Saved","Applied","Interview","Offer"];
+  return <div>
+    <div className="grid grid-cols-4 gap-2">{stages.map((x,i)=><div key={x} className={`rounded-xl p-3 text-center transition ${i===step?"bg-white text-slate-950 shadow-lg":"border border-white/10 bg-white/[.06] text-white"}`}><p className="text-lg font-black">{[12,8,3,1][i]}</p><p className={`mt-1 text-[8px] font-black ${i===step?"text-slate-400":"text-white/35"}`}>{x.toUpperCase()}</p></div>)}</div>
+    <div className="float-panel mt-3 rounded-[20px] border border-white/10 bg-white/[.07] p-4"><div className="flex items-center justify-between"><div><p className="font-black">Data Analyst</p><p className="mt-1 text-xs text-white/40">Aster Analytics</p></div><span className="rounded-full bg-violet-400/15 px-3 py-1 text-xs font-black text-violet-200">{stages[step]}</span></div><div className="mt-4 flex gap-2">{stages.map((_,i)=><div key={i} className={`h-1.5 flex-1 rounded-full ${i<=step?"bg-violet-400":"bg-white/10"}`}/>)}</div></div>
+  </div>;
+}
+
+function AssistantScene({ step }: { step: number }) {
+  const prompts = ["What skill should I improve?","Which role should I review first?","Why am I not getting interviews?","What should I do next?"];
+  const answers = ["Tableau appears across several strong-match roles.","Your strongest current fit is Data Analyst at 87%.","Focus on stronger-fit roles and clearer resume evidence.","Review the two highest-match roles before applying again."];
+  return <div className="rounded-[22px] border border-white/10 bg-white/[.06] p-4"><div className="rounded-2xl bg-white p-4 text-slate-900"><p className="text-[10px] font-black text-violet-600">YOU</p><p className="mt-1 text-sm font-black">{prompts[step]}</p></div><div className="float-panel mt-3 rounded-2xl bg-violet-400/10 p-4"><div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500 text-[10px] font-black">JC</span><p className="text-[10px] font-black text-violet-200">JOBCRAFT</p></div><p className="mt-3 text-sm leading-6 text-white/80">{answers[step]}</p></div></div>;
+}
+
+function DashboardScene({ step }: { step: number }) {
+  const items = ["Review 87% match","Update resume","Move application","Check next skill gap"];
+  return <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-[20px] border border-white/10 bg-white/[.06] p-4"><p className="text-[10px] font-black text-violet-200">TODAY</p><p className="mt-2 text-xl font-black">{items[step]}</p><p className="mt-2 text-xs leading-5 text-white/45">One clear action based on your current workspace.</p></div><div className="grid grid-cols-2 gap-2">{[["Matches","6"],["Applied","8"],["Interview","3"],["Offer","1"]].map(([a,b])=><div key={a} className="rounded-xl bg-white/[.07] p-3 text-center"><p className="text-xl font-black">{b}</p><p className="mt-1 text-[8px] font-black text-white/35">{a.toUpperCase()}</p></div>)}</div></div>;
 }
