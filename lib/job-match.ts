@@ -13,26 +13,26 @@ export type MatchInput = {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
+export function getJobMatchLabel(score: number) {
+  if (score >= 75) return "Strong fit";
+  if (score >= 55) return "Potential fit";
+  return "Review first";
+}
+
 export function calculateJobMatch(input: MatchInput) {
   const userSkills = new Set(input.userSkills.map(normalize));
   const matchedSkills = input.jobSkills.filter((skill) => userSkills.has(normalize(skill)));
   const missingSkills = input.jobSkills.filter((skill) => !userSkills.has(normalize(skill)));
-
   const skillScore = input.jobSkills.length ? (matchedSkills.length / input.jobSkills.length) * 60 : 30;
-
   const userExp = Number(input.userExperience ?? 0);
   const requiredExp = Number(input.jobMinExperience ?? 0);
   const experienceScore = requiredExp === 0 ? 15 : Math.min(userExp / requiredExp, 1) * 15;
-
   const preferredModes = (input.preferredWorkModes ?? []).map(normalize);
   const modeScore = !preferredModes.length || !input.jobWorkMode || preferredModes.includes(normalize(input.jobWorkMode)) ? 10 : 3;
-
   const locationScore = !input.userCity || !input.jobLocation || normalize(input.jobLocation).includes(normalize(input.userCity)) || normalize(input.jobWorkMode ?? "") === "remote" ? 5 : 1;
-
   const targetRoles = (input.targetRoles ?? []).map(normalize);
   const title = normalize(input.jobTitle ?? "");
   const roleScore = !targetRoles.length || targetRoles.some((role) => title.includes(role) || role.includes(title)) ? 10 : 3;
-
   const score = Math.max(0, Math.min(100, Math.round(skillScore + experienceScore + modeScore + locationScore + roleScore)));
 
   const strengths: string[] = [];
