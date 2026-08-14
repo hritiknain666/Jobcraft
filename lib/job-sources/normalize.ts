@@ -4,6 +4,11 @@ function cleanText(value: string | null | undefined, fallback = "") {
   return (value ?? fallback).trim();
 }
 
+function cleanOptionalText(value: string | null | undefined) {
+  const cleaned = cleanText(value);
+  return cleaned || null;
+}
+
 function cleanNumber(value: number | null | undefined) {
   return value === null || value === undefined || Number.isNaN(value) ? null : value;
 }
@@ -24,14 +29,14 @@ export function normalizeJob(input: JobSourceInput): NormalizedJob {
     title,
     company,
     location: cleanText(input.location, "India"),
-    workMode: cleanText(input.workMode, "On-site"),
-    experienceMin: cleanNumber(input.experienceMin) ?? 0,
+    workMode: cleanOptionalText(input.workMode),
+    experienceMin: cleanNumber(input.experienceMin),
     experienceMax: cleanNumber(input.experienceMax),
     salaryMinLpa: cleanNumber(input.salaryMinLpa),
     salaryMaxLpa: cleanNumber(input.salaryMaxLpa),
     skills: [...new Set((input.skills ?? []).map((skill) => skill.trim()).filter(Boolean))],
     description: cleanText(input.description),
-    applyUrl: cleanText(input.applyUrl) || null,
+    applyUrl: cleanOptionalText(input.applyUrl),
     postedAt: cleanText(input.postedAt) || new Date().toISOString(),
     isActive: input.isActive ?? true,
     isSample: input.isSample ?? false,
