@@ -8,6 +8,7 @@ type WorkspaceShellProps = {
   name?: string | null;
   headline?: string | null;
   strength?: number;
+  authenticated?: boolean;
   children: React.ReactNode;
 };
 
@@ -25,8 +26,8 @@ const toolNav = [
   ["career-assistant", "Career assistant", "/career-assistant", "spark"],
 ] as const;
 
-export default function WorkspaceShell({ active, name, headline, strength = 0, children }: WorkspaceShellProps) {
-  const displayName = name?.trim() || "Your profile";
+export default function WorkspaceShell({ active, name, headline, strength = 0, authenticated = true, children }: WorkspaceShellProps) {
+  const displayName = name?.trim() || (authenticated ? "Your profile" : "Guest candidate");
   const initials = displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -34,11 +35,12 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, c
     .map((part) => part[0]?.toUpperCase())
     .join("") || "JC";
   const safeStrength = Math.max(0, Math.min(100, Math.round(strength)));
+  const profileHref = authenticated ? "/profile" : "/profile?auth=signup";
 
   return (
     <div className="jc-app-shell">
       <aside className="jc-sidebar">
-        <Link href="/dashboard" className="jc-brand" aria-label="JobCraft workspace">
+        <Link href={authenticated ? "/dashboard" : "/"} className="jc-brand" aria-label="JobCraft workspace">
           <span className="jc-brand-mark" aria-hidden="true"><NavIcon name="spark" /></span>
           <span className="jc-brand-name">JobCraft</span>
         </Link>
@@ -47,7 +49,7 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, c
           <p className="jc-nav-label">YOUR COMMAND CENTER</p>
           <nav className="jc-nav-list" aria-label="Workspace navigation">
             {primaryNav.map(([key, label, href, icon]) => (
-              <NavLink key={key} active={active === key} href={href} label={label} icon={icon} />
+              <NavLink key={key} active={active === key} href={key === "workspace" && !authenticated ? "/?auth=signup" : href} label={label} icon={icon} />
             ))}
           </nav>
         </div>
@@ -62,21 +64,25 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, c
         </div>
 
         <div className="jc-sidebar-bottom">
-          <Link href="/profile" className="jc-signal-card">
+          <Link href={profileHref} className="jc-signal-card" scroll={authenticated ? undefined : false}>
             <div className="jc-signal-head"><span>PROFILE SIGNAL</span><b>{safeStrength}%</b></div>
             <div className="jc-signal-track"><span style={{ width: `${safeStrength}%` }} /></div>
             <p>{safeStrength >= 85 ? "Your signal is strong" : "Make your signal stronger"} <span>→</span></p>
           </Link>
 
           <div className="jc-user-row">
-            <Link href="/profile" className="jc-avatar">{initials}</Link>
-            <Link href="/profile" className="jc-user-copy">
+            <Link href={profileHref} scroll={authenticated ? undefined : false} className="jc-avatar">{initials}</Link>
+            <Link href={profileHref} scroll={authenticated ? undefined : false} className="jc-user-copy">
               <b>{displayName}</b>
-              <span>{headline?.trim() || "JobCraft candidate"}</span>
+              <span>{headline?.trim() || (authenticated ? "JobCraft candidate" : "Build your career signal")}</span>
             </Link>
-            <form action={logout}>
-              <button className="jc-logout-button" aria-label="Log out" title="Log out"><NavIcon name="sliders" /></button>
-            </form>
+            {authenticated ? (
+              <form action={logout}>
+                <button className="jc-logout-button" aria-label="Log out" title="Log out"><NavIcon name="sliders" /></button>
+              </form>
+            ) : (
+              <Link href="/?auth=login" scroll={false} className="jc-logout-button" aria-label="Log in" title="Log in"><NavIcon name="sliders" /></Link>
+            )}
           </div>
         </div>
       </aside>
@@ -85,9 +91,9 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, c
         <header className="jc-topbar">
           <div className="jc-intention"><span /> Search with intention.</div>
           <div className="jc-top-actions">
-            <Link href="/applications" className="jc-bell" aria-label="Applications"><NavIcon name="bell" /><span /></Link>
+            <Link href={authenticated ? "/applications" : "/applications?auth=signup"} scroll={authenticated ? undefined : false} className="jc-bell" aria-label="Applications"><NavIcon name="bell" /><span /></Link>
             <div className="jc-top-divider" />
-            <Link href="/profile" className="jc-top-avatar">{initials}</Link>
+            <Link href={profileHref} scroll={authenticated ? undefined : false} className="jc-top-avatar">{initials}</Link>
           </div>
         </header>
         <main className="jc-workspace-content">{children}</main>
