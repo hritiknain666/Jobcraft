@@ -28,6 +28,6 @@ export function calculateJobsListMatch(job: any, profile: JobsListProfile | null
     ...match,
     matched: match.matchedSkills,
     missing: match.missingSkills,
-    label: getJobMatchLabel(match.score),
+    label: getJobMatchLabel(match.score, match.confidence),
   };
 }
