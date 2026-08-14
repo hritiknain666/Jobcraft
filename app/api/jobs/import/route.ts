@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     if (!isAdzunaPublishingReady()) {
       return NextResponse.json({
-        error: "Adzuna publishing is not enabled. Complete provider attribution/licensing checks, then set ADZUNA_PUBLISHING_READY=true.",
+        error: "Adzuna publishing is not enabled. Verify provider/commercial approval and production attribution, then enable both readiness flags.",
       }, { status: 409 });
     }
 
