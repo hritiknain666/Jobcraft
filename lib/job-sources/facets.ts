@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { jobFreshnessCutoff } from "./freshness";
 
 export type JobFacets = {
   titles: string[];
@@ -15,6 +16,7 @@ export async function getJobFacets(supabase: SupabaseClient): Promise<JobFacets>
     .from("jobs")
     .select("title,location,skills,work_mode")
     .eq("is_active", true)
+    .gte("posted_at", jobFreshnessCutoff())
     .order("posted_at", { ascending: false })
     .limit(1000);
 
