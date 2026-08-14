@@ -1,8 +1,9 @@
 name: Refresh live jobs
 
+# Keep refreshes manual until the production provider credentials, publication
+# approval, and matching JOB_IMPORT_SECRET are configured. Re-add the schedule
+# only after a controlled preview + persisted import has been verified.
 on:
-  schedule:
-    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -22,15 +23,15 @@ jobs:
           SITE_URL="${SITE_URL%/}"
 
           if [ -z "${IMPORT_SECRET}" ]; then
-            echo "JOB_IMPORT_SECRET is not configured in GitHub; refresh is safely disabled."
-            exit 0
+            echo "::error::JOB_IMPORT_SECRET is not configured in GitHub Actions."
+            exit 1
           fi
 
           STATUS="$(curl --fail --silent --show-error "${SITE_URL}/api/jobs/provider-status")"
           READY="$(STATUS_JSON="${STATUS}" node -e 'const s=JSON.parse(process.env.STATUS_JSON); process.stdout.write(s?.adzuna?.importsEnabled ? "yes" : "no")')"
           if [ "${READY}" != "yes" ]; then
-            echo "Adzuna imports are not fully configured on the deployed app; refresh is safely disabled."
-            exit 0
+            echo "::error::Adzuna imports are not fully enabled on the deployed JobCraft app."
+            exit 1
           fi
 
           for PAGE in 1 2 3 4; do
