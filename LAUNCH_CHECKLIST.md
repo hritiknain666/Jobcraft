@@ -56,7 +56,7 @@ Cloudflare handles normal public HTTPS traffic on port 443 once the custom domai
 ## 6. Final pre-launch test
 
 - [x] GitHub Actions regression tests, Next.js build and Cloudflare/OpenNext build are green on the release candidate
-- [ ] Merge the verified release candidate to `main` and confirm the same build is green on `main`
+- [x] Verified release candidate merged to `main`; the same regression, Next.js and Cloudflare/OpenNext CI suite passed on `main`
 - [ ] Homepage/mobile navigation smoke test on the final domain
 - [ ] Auth + password reset smoke test on the final domain
 - [ ] Profile and certificate ownership smoke test on the final domain
