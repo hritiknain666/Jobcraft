@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "outDir": ".test-build",
+    "rootDir": ".",
+    "isolatedModules": false
+  },
+  "include": [
+    "lib/skill-match.ts",
+    "lib/job-match.ts",
+    "lib/job-sources/types.ts",
+    "lib/job-sources/normalize.ts",
+    "lib/job-sources/source-kind.ts",
+    "lib/job-sources/validate.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".open-next"]
+}
