@@ -1,21 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPagePrefixes = [
-  "/jobs",
-  "/applications",
-  "/profile",
-  "/resume",
-  "/resumes",
-  "/certificates",
-  "/cover-letter",
-  "/career-assistant",
-];
-
-function isProtectedPage(pathname: string) {
-  return protectedPagePrefixes.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-}
-
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -41,22 +26,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh and verify the cookie-backed session before Server Components use it.
-  const { data } = await supabase.auth.getClaims();
-  const authenticated = Boolean(data?.claims?.sub);
-
-  if (!authenticated && isProtectedPage(request.nextUrl.pathname)) {
-    const loginUrl = request.nextUrl.clone();
-    const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-    loginUrl.pathname = "/dashboard";
-    loginUrl.search = "";
-    loginUrl.searchParams.set("auth", "login");
-    loginUrl.searchParams.set("next", nextPath);
-
-    const redirectResponse = NextResponse.redirect(loginUrl);
-    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
-    return redirectResponse;
-  }
+  // Refresh and verify the cookie-backed session for Server Components.
+  // Browsing product pages is intentionally public: pages render useful
+  // previews for signed-out visitors. Authentication is enforced only when
+  // a user performs a personal action such as saving, uploading or tracking.
+  await supabase.auth.getClaims();
 
   return response;
 }
