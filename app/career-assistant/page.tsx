@@ -1,30 +1,44 @@
 import Link from "next/link";
+import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch } from "@/lib/job-match";
-import PremiumPageVisual from "@/components/premium-page-visual";
+import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
 
 export default async function CareerAssistantPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-      <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><div className="flex items-center gap-2"><Link href="/career-assistant?auth=login" scroll={false} className="hidden px-4 py-2.5 text-sm font-bold sm:block">Log in</Link><Link href="/career-assistant?auth=signup" scroll={false} className="rounded-xl bg-[#090d1f] px-5 py-3 text-sm font-bold text-white">Get started</Link></div></div></header>
-      <section className="relative overflow-hidden bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_18%,rgba(124,58,237,.12),transparent_30%),radial-gradient(circle_at_90%_12%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1200px] gap-9 px-5 py-14 sm:px-8 lg:grid-cols-[.92fr_1.08fr] lg:items-center lg:py-18"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">CAREER ASSISTANT</p><h1 className="mt-3 text-5xl font-black tracking-[-.055em]">Know what to improve before your next application.</h1><p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">JobCraft turns your profile, match patterns and application history into practical priorities instead of generic career advice.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/career-assistant?auth=signup" scroll={false} className="rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-200">Create your workspace →</Link><Link href="/jobs" className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-black">Explore jobs</Link></div><p className="mt-4 text-sm text-slate-500">Personal recommendations require your own profile and activity so the guidance stays grounded.</p></div><div className="space-y-4"><PremiumPageVisual variant="assistant" /><div className="grid gap-3 sm:grid-cols-2">{[["Repeated gaps","Prioritise skills that appear across several target roles."],["Application conversion","Use your own interview rate to decide where to improve."]].map(([a,b])=><div key={a} className="jc-glass rounded-2xl p-4"><p className="text-sm font-black">{a}</p><p className="mt-2 text-sm leading-6 text-slate-500">{b}</p></div>)}</div></div></div></section>
-    </main>;
-  }
+  if (!user) return <PublicAssistantPreview />;
 
   const [{ data: profile }, { data: jobs }, { data: applications }, { data: resumes }, { data: certificates }] = await Promise.all([
-    supabase.from("profiles").select("skills,experience_years,city,preferred_work_modes,target_roles,headline").eq("id", user.id).maybeSingle(),
-    supabase.from("jobs").select("id,title,company,skills,experience_min,location,work_mode,salary_min_lpa,salary_max_lpa").eq("is_active", true).limit(30),
+    supabase.from("profiles").select("full_name,skills,experience_years,city,preferred_work_modes,target_roles,headline").eq("id", user.id).maybeSingle(),
+    supabase.from("jobs").select("id,title,company,skills,experience_min,location,work_mode,salary_min_lpa,salary_max_lpa,posted_at").eq("is_active", true).gte("posted_at", jobFreshnessCutoff()).limit(30),
     supabase.from("applications").select("status").eq("user_id", user.id),
     supabase.from("resumes").select("id").eq("user_id", user.id),
     supabase.from("certificates").select("id").eq("user_id", user.id),
   ]);
 
-  const matches = (jobs ?? []).map((job) => ({ job, match: calculateJobMatch({ jobSkills: job.skills ?? [], userSkills: profile?.skills ?? [], jobMinExperience: job.experience_min, userExperience: profile?.experience_years, jobLocation: job.location, userCity: profile?.city, jobWorkMode: job.work_mode, preferredWorkModes: profile?.preferred_work_modes ?? [], targetRoles: profile?.target_roles ?? [], jobTitle: job.title }) })).sort((a, b) => b.match.score - a.match.score).slice(0, 5);
-  const interviews = applications?.filter((a) => ["Interview", "Offer"].includes(a.status)).length ?? 0;
-  const applied = applications?.filter((a) => a.status !== "Saved").length ?? 0;
+  const matches = (jobs ?? []).map((job) => ({
+    job,
+    match: calculateJobMatch({
+      jobSkills: job.skills ?? [],
+      userSkills: profile?.skills ?? [],
+      jobMinExperience: job.experience_min,
+      userExperience: profile?.experience_years,
+      jobLocation: job.location,
+      userCity: profile?.city,
+      jobWorkMode: job.work_mode,
+      preferredWorkModes: profile?.preferred_work_modes ?? [],
+      targetRoles: profile?.target_roles ?? [],
+      jobTitle: job.title,
+    }),
+  })).sort((a, b) => {
+    const coverage = b.match.evidenceCoverage - a.match.evidenceCoverage;
+    return Math.abs(coverage) > .25 ? coverage : b.match.score - a.match.score;
+  }).slice(0, 5);
+
+  const interviews = applications?.filter((item) => ["Interview", "Offer"].includes(item.status)).length ?? 0;
+  const applied = applications?.filter((item) => item.status !== "Saved").length ?? 0;
   const interviewRate = applied ? Math.round((interviews / applied) * 100) : 0;
   const topMissing = Array.from(new Set(matches.flatMap((item) => item.match.missingSkills))).slice(0, 6);
   const priorities = [
@@ -32,21 +46,53 @@ export default async function CareerAssistantPage() {
     !(profile?.target_roles?.length) ? ["Focus your target roles", "Choose 1–3 role families so JobCraft can rank opportunities more intelligently.", "/profile"] : null,
     !(resumes?.length) ? ["Create a resume", "Build or upload an ATS-friendly resume before applying at scale.", "/resume"] : null,
     !(certificates?.length) ? ["Add useful credentials", "Save relevant professional certificates so they are ready for resume versions.", "/certificates"] : null,
-    applied >= 5 && interviewRate < 20 ? ["Improve application conversion", "Your interview rate is low. Prioritise stronger-fit jobs and sharpen evidence in your resume.", "/applications"] : null,
+    applied >= 5 && interviewRate < 20 ? ["Improve application conversion", "Your interview rate is low. Prioritise stronger-fit roles and sharpen factual evidence in your resume.", "/applications"] : null,
     topMissing.length ? ["Close the right skill gaps", `Repeated gaps in strong matches: ${topMissing.slice(0,4).join(", ")}. Focus only on skills that support your target direction.`, "/jobs"] : null,
   ].filter(Boolean) as string[][];
 
-  return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-    <section className="relative overflow-hidden border-b border-slate-200/70 bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(124,58,237,.10),transparent_30%),radial-gradient(circle_at_90%_10%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1280px] gap-7 px-5 py-9 sm:px-8 lg:grid-cols-[1.04fr_.96fr] lg:items-center"><div><Link href="/dashboard" className="text-sm font-black text-violet-600">← Dashboard</Link><p className="mt-5 text-xs font-black tracking-[.16em] text-violet-600">CAREER ASSISTANT</p><h1 className="mt-2 text-4xl font-black tracking-[-.05em] sm:text-5xl">Turn your job-search data into next steps.</h1><p className="mt-3 max-w-2xl text-lg leading-8 text-slate-600">Use your profile, matching and application history to surface the few actions that matter most right now.</p><div className="mt-6 flex flex-wrap gap-3"><Link href="/jobs" className="rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-200">Explore recommended jobs →</Link><Link href="/profile" className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-black">Update profile</Link></div></div><PremiumPageVisual variant="assistant" compact /></div></section>
+  const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
-    <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Stat label="Applications sent" value={String(applied)} note="Excludes saved roles"/><Stat label="Interview / offer rate" value={`${interviewRate}%`} note="From submitted applications"/><Stat label="Profile skills" value={String(profile?.skills?.length ?? 0)} note="Used for matching"/><Stat label="Certificates" value={String(certificates?.length ?? 0)} note="Available for resumes"/></div>
+  return (
+    <WorkspaceShell active="career-assistant" name={profile?.full_name} headline={profile?.headline} strength={strength}>
+      <div className="jc-content-wrap">
+        <section className="jc-tool-hero">
+          <div><p className="jc-eyebrow">YOUR NEXT BEST MOVE</p><h1 className="jc-page-title">Career assistant</h1><p className="jc-page-copy">Turn your profile, match patterns and application history into a short, practical list of priorities.</p></div>
+          <div className="flex flex-wrap gap-2"><Link href="/jobs" className="jc-button-primary">Explore roles →</Link><Link href="/profile" className="jc-button-secondary">Update profile</Link></div>
+        </section>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[.78fr_1.22fr]"><section className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">PRIORITY ACTIONS</p><h2 className="mt-2 text-2xl font-black">What to work on next</h2></div><span className="rounded-full bg-violet-50 px-3 py-1.5 text-[10px] font-black text-violet-700">PERSONALISED</span></div><div className="mt-5 space-y-3">{priorities.length ? priorities.slice(0,5).map(([title,text,href],i)=><Link key={title} href={href} className="group flex gap-4 rounded-2xl border border-slate-200 p-4 transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50/30"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#090d1f] text-xs font-black text-white transition group-hover:bg-violet-600">0{i+1}</span><span><b>{title}</b><span className="mt-1 block text-sm leading-6 text-slate-500">{text}</span></span></Link>) : <div className="rounded-2xl bg-emerald-50 p-5 text-emerald-900"><b>Your foundation looks strong.</b><p className="mt-2 text-sm leading-6">Focus on quality applications to high-match roles and keep your tracker updated.</p></div>}</div></section>
+        <section className="jc-stats-grid">
+          <Stat label="Applications sent" value={String(applied)} note="saved roles excluded" />
+          <Stat label="Interview rate" value={`${interviewRate}%`} note="interview + offer conversion" />
+          <Stat label="Profile skills" value={String(profile?.skills?.length ?? 0)} note="used by match scoring" />
+          <Stat label="Certificates" value={String(certificates?.length ?? 0)} note="ready for resumes" />
+        </section>
 
-        <section><div className="flex items-end justify-between"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">STRONGEST OPPORTUNITIES</p><h2 className="mt-2 text-2xl font-black">Jobs worth reviewing first</h2></div><Link href="/jobs" className="text-sm font-black text-violet-600">All jobs →</Link></div><div className="mt-5 space-y-3">{matches.map(({ job, match }) => <Link key={job.id} href={`/jobs/${job.id}`} className="group block rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_20px_55px_rgba(15,23,42,.08)]"><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-violet-500"/><p className="text-sm font-bold text-violet-600">{job.company}</p></div><h3 className="mt-1 text-xl font-black">{job.title}</h3><p className="mt-2 text-sm text-slate-500">{job.location} · {job.work_mode}{job.salary_min_lpa?` · ₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA`:""}</p><div className="mt-3 flex flex-wrap gap-2">{match.matchedSkills.slice(0,2).map(skill=><span key={skill} className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-black text-emerald-700">{skill} ✓</span>)}{match.missingSkills.slice(0,1).map(skill=><span key={skill} className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-black text-amber-700">Gap: {skill}</span>)}</div></div><div className="rounded-2xl bg-slate-50 px-5 py-4 text-center"><p className="text-3xl font-black text-emerald-600">{match.score}%</p><p className="mt-1 text-xs font-black text-slate-400">MATCH</p></div></div></Link>)}</div></section></div>
-    </div>
-  </main>;
+        <section className="jc-tool-grid">
+          <article className="jc-card jc-tool-panel">
+            <div className="flex items-start justify-between gap-4"><div><p className="jc-eyebrow">PRIORITY ACTIONS</p><h2 className="jc-section-title">What to work on next</h2></div><span className="jc-ready-pill">Grounded</span></div>
+            <div className="jc-tool-list">
+              {priorities.length ? priorities.slice(0, 5).map(([title, text, href], index) => <Link key={title} href={href} className="jc-tool-list-item group flex gap-4 text-inherit no-underline"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#173f33] text-xs font-black text-white transition group-hover:bg-[#278363]">0{index + 1}</span><span><b className="block text-sm">{title}</b><span className="mt-1 block text-xs leading-6 text-[#789087]">{text}</span></span></Link>) : <div className="rounded-[18px] bg-[#e9f4ed] p-5 text-[#285844]"><b>Your foundation looks strong.</b><p className="mt-2 text-xs leading-6">Focus on quality applications to high-evidence roles and keep your tracker current.</p></div>}
+            </div>
+            <p className="mt-5 text-[11px] leading-5 text-[#789087]">This MVP guidance is deterministic, not model-generated. It only uses data already in your JobCraft profile, applications and current job listings.</p>
+          </article>
+
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="jc-eyebrow">STRONGEST OPPORTUNITIES</p><h2 className="jc-section-title">Jobs worth reviewing first</h2></div><Link href="/jobs" className="jc-text-link">All roles ↗</Link></div>
+            <div className="jc-tool-list">
+              {matches.map(({ job, match }) => <Link key={job.id} href={`/jobs/${job.id}`} className="jc-card p-5 text-inherit no-underline transition hover:-translate-y-0.5 hover:border-[#b9c9c2]"><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="jc-eyebrow !text-[10px]">{job.company}</p><h3 className="jc-section-title !mt-2 !text-[22px]">{job.title}</h3><p className="mt-2 text-xs text-[#789087]">{job.location || "India"} · {job.work_mode || "Mode not listed"}{job.salary_min_lpa ? ` · ₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA` : ""}</p><div className="mt-3 flex flex-wrap gap-2">{match.matchedSkills.slice(0,2).map((skill) => <span key={skill} className="jc-chip">✓ {skill}</span>)}{match.missingSkills.slice(0,1).map((skill) => <span key={skill} className="jc-chip !bg-[#f7e0c7]">Gap · {skill}</span>)}</div></div><div className="min-w-[105px] rounded-[18px] bg-[#efede7] px-5 py-4 text-center"><p className="jc-serif m-0 text-3xl text-[#278363]">{match.score}%</p><p className="mt-1 text-[9px] font-black tracking-[.12em] text-[#789087]">{Math.round(match.evidenceCoverage * 100)}% EVIDENCE</p></div></div></Link>)}
+              {!matches.length ? <div className="jc-card p-8 text-sm leading-6 text-[#789087]">No current roles are available to compare yet.</div> : null}
+            </div>
+          </section>
+        </section>
+      </div>
+    </WorkspaceShell>
+  );
 }
 
-function Stat({label,value,note}:{label:string;value:string;note:string}){return <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-violet-200"><p className="text-sm font-bold text-slate-500">{label}</p><p className="mt-2 text-3xl font-black">{value}</p><p className="mt-1 text-xs text-slate-400">{note}</p></div>}
+function PublicAssistantPreview() {
+  return <WorkspaceShell active="career-assistant" authenticated={false} name="Your profile" headline="Candidate" strength={0}><div className="jc-content-wrap"><section className="jc-tool-hero"><div><p className="jc-eyebrow">YOUR NEXT BEST MOVE</p><h1 className="jc-page-title">Career assistant</h1><p className="jc-page-copy">Practical priorities should come from your real profile and job-search activity—not generic advice.</p></div><Link href="/career-assistant?auth=signup" scroll={false} className="jc-button-primary">Create your workspace →</Link></section><section className="jc-profile-layout"><article className="jc-dark-card jc-profile-identity"><p className="jc-eyebrow !text-[#f49a48]">A CLEAR SIGNAL</p><h2 className="jc-section-title !mt-4 !text-white">Know what matters next.</h2><p className="mt-3 text-sm leading-7 text-[#a4b9b1]">JobCraft can surface repeated skill gaps, weak application conversion and missing profile evidence once your own data exists.</p></article><article className="jc-card jc-toolkit-card"><p className="jc-eyebrow">EXAMPLE PRIORITIES</p><h2 className="jc-section-title">Grounded, useful actions</h2><div className="jc-tool-list">{["Strengthen repeated skill gaps", "Improve profile evidence", "Review higher-fit roles first", "Track interview conversion"].map((item) => <div key={item} className="jc-tool-list-item text-sm font-bold">✓ {item}</div>)}</div></article></section></div></WorkspaceShell>;
+}
+
+function Stat({ label, value, note }: { label: string; value: string; note: string }) {
+  return <div className="jc-card jc-stat-card"><div className="jc-stat-top"><span>{label}</span><span className="jc-stat-icon">✣</span></div><div className="jc-stat-value">{value}</div><div className="jc-stat-note">{note}</div></div>;
+}
