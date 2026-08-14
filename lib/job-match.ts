@@ -1,3 +1,5 @@
+import { compareSkills } from "@/lib/skill-match";
+
 export type MatchInput = {
   jobSkills: string[];
   userSkills: string[];
@@ -20,9 +22,10 @@ export function getJobMatchLabel(score: number) {
 }
 
 export function calculateJobMatch(input: MatchInput) {
-  const userSkills = new Set(input.userSkills.map(normalize));
-  const matchedSkills = input.jobSkills.filter((skill) => userSkills.has(normalize(skill)));
-  const missingSkills = input.jobSkills.filter((skill) => !userSkills.has(normalize(skill)));
+  const { matched: matchedSkills, missing: missingSkills } = compareSkills(
+    input.jobSkills,
+    input.userSkills,
+  );
   const skillScore = input.jobSkills.length ? (matchedSkills.length / input.jobSkills.length) * 60 : 30;
   const userExp = Number(input.userExperience ?? 0);
   const requiredExp = Number(input.jobMinExperience ?? 0);
