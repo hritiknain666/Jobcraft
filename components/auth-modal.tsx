@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -135,6 +136,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
           {mode === "signup" && <label className="block text-sm font-black">Full name<input name="fullName" required autoComplete="name" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>}
           <label className="block text-sm font-black">Email<input name="email" type="email" required autoComplete="email" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
           <label className="block text-sm font-black">Password<input name="password" type="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
+          {mode === "login" && <div className="flex justify-end"><Link href="/auth/forgot-password" className="text-sm font-black text-violet-600 hover:text-violet-700">Forgot password?</Link></div>}
           <button disabled={loading} className="w-full rounded-xl bg-[#090d1f] px-5 py-3.5 font-black text-white transition hover:bg-violet-600 disabled:opacity-60">{loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</button>
         </form>
 
