@@ -1,29 +1,86 @@
 import Link from "next/link";
+import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { deleteCertificate, saveCertificate } from "./actions";
-import PremiumPageVisual from "@/components/premium-page-visual";
 
 export default async function CertificatesPage({ searchParams }: { searchParams: Promise<{ error?: string; added?: string }> }) {
   const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-    <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><div className="flex items-center gap-2"><Link href="/certificates?auth=login" scroll={false} className="hidden px-4 py-2.5 text-sm font-bold sm:block">Log in</Link><Link href="/certificates?auth=signup" scroll={false} className="rounded-xl bg-[#090d1f] px-5 py-3 text-sm font-bold text-white">Get started</Link></div></div></header>
-    <section className="relative overflow-hidden bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(124,58,237,.12),transparent_30%),radial-gradient(circle_at_90%_12%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1200px] gap-9 px-5 py-14 sm:px-8 lg:grid-cols-[.92fr_1.08fr] lg:items-center"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">CERTIFICATE LIBRARY</p><h1 className="mt-3 text-5xl font-black tracking-[-.055em]">Keep real credentials ready when they matter.</h1><p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">Save professional credentials once, keep proof private, and reuse only the certificates relevant to each application.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/certificates?auth=signup" scroll={false} className="rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-200">Build my library →</Link><Link href="/resume" className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-black">Resume workspace</Link></div></div><PremiumPageVisual variant="certificates" /></div></section>
-  </main>;
+  if (!user) return <PublicCertificatesPreview />;
 
-  const { data: certificates } = await supabase.from("certificates").select("id,name,issuer,issue_date,expiry_date,credential_id,credential_url,storage_path,created_at").eq("user_id", user.id).order("issue_date", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
+  const [{ data: certificates }, { data: profile }] = await Promise.all([
+    supabase.from("certificates").select("id,name,issuer,issue_date,expiry_date,credential_id,credential_url,storage_path,created_at").eq("user_id", user.id).order("issue_date", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("full_name,headline,city,experience_years,skills,target_roles,preferred_work_modes").eq("id", user.id).maybeSingle(),
+  ]);
+
   const proofCount = certificates?.filter((certificate: any) => Boolean(certificate.storage_path)).length ?? 0;
+  const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
-  return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-    <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><Link href="/dashboard" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold">← Dashboard</Link></div></header>
-    <section className="relative overflow-hidden border-b border-slate-200/70 bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_20%,rgba(124,58,237,.10),transparent_30%),radial-gradient(circle_at_90%_12%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1240px] gap-7 px-5 py-9 sm:px-8 lg:grid-cols-[1.04fr_.96fr] lg:items-center"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">CERTIFICATE LIBRARY</p><h1 className="mt-2 text-4xl font-black tracking-[-.05em] sm:text-5xl">Keep proof organised, not scattered.</h1><p className="mt-3 max-w-2xl text-lg leading-8 text-slate-600">Store factual credential details and optional private proof in one place.</p><div className="mt-6 flex flex-wrap gap-3"><span className="rounded-full bg-violet-50 px-4 py-2 text-xs font-black text-violet-700">{certificates?.length ?? 0} SAVED</span><span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">{proofCount} WITH PROOF</span><Link href="/resume/builder" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">OPEN RESUME BUILDER →</Link></div></div><PremiumPageVisual variant="certificates" compact /></div></section>
+  return (
+    <WorkspaceShell active="certificates" name={profile?.full_name} headline={profile?.headline} strength={strength}>
+      <div className="jc-content-wrap">
+        <section className="jc-tool-hero">
+          <div><p className="jc-eyebrow">PROOF, READY WHEN NEEDED</p><h1 className="jc-page-title">Certificates</h1><p className="jc-page-copy">Keep factual credentials and optional proof organised, then reuse only what is relevant to each resume.</p></div>
+          <Link href="/resume/builder" className="jc-button-primary">Open resume builder →</Link>
+        </section>
 
-    <section className="mx-auto grid max-w-[1240px] gap-6 px-5 py-8 sm:px-8 lg:grid-cols-[360px_1fr] lg:py-10"><aside className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">ADD CREDENTIAL</p><h2 className="mt-2 text-xl font-black">Save a certificate</h2></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-700">PRIVATE</span></div><p className="mt-2 text-sm leading-6 text-slate-500">Only add credentials you genuinely hold. Proof files stay private.</p>{params.error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{params.error}</p>}{params.added && <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Certificate added.</p>}<form action={saveCertificate} className="mt-5 space-y-4"><Field name="name" label="Certificate name" placeholder="Google Data Analytics" required/><Field name="issuer" label="Issuing organisation" placeholder="Google / Coursera" required/><div className="grid grid-cols-2 gap-3"><Field name="issueDate" label="Issue date" type="date"/><Field name="expiryDate" label="Expiry" type="date"/></div><Field name="credentialId" label="Credential ID" placeholder="Optional"/><Field name="credentialUrl" label="Credential URL" type="url" placeholder="https://..."/><label className="block text-sm font-black">Private proof<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"/><span className="mt-2 block text-xs font-normal text-slate-500">PDF, JPG or PNG up to 5 MB.</span></label><button className="w-full rounded-xl bg-[#090d1f] px-5 py-3.5 font-black text-white transition hover:bg-violet-600">Add certificate</button></form></aside>
+        {params.error ? <p className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">{params.error}</p> : null}
+        {params.added ? <p className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">Certificate added.</p> : null}
 
-      <section><div className="flex items-end justify-between"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">YOUR CREDENTIALS</p><h2 className="mt-2 text-2xl font-black">Ready for relevant resume versions</h2></div><span className="text-sm font-bold text-slate-400">{certificates?.length ?? 0} saved</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{certificates?.length ? certificates.map((certificate: any) => <article key={certificate.id} className="group rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_20px_55px_rgba(15,23,42,.08)]"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-black text-violet-600">{certificate.issuer}</p><h3 className="mt-1 text-xl font-black">{certificate.name}</h3></div>{certificate.storage_path && <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-emerald-700">PROOF SAVED</span>}</div><div className="mt-5 grid gap-2 text-sm text-slate-500">{certificate.issue_date && <div className="rounded-xl bg-slate-50 px-3 py-2">Issued {new Date(certificate.issue_date).toLocaleDateString("en-IN")}</div>}{certificate.expiry_date && <div className="rounded-xl bg-slate-50 px-3 py-2">Expires {new Date(certificate.expiry_date).toLocaleDateString("en-IN")}</div>}{certificate.credential_id && <div className="rounded-xl bg-slate-50 px-3 py-2">ID: {certificate.credential_id}</div>}</div><div className="mt-5 flex flex-wrap gap-2">{certificate.credential_url && <a href={certificate.credential_url} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black">View credential ↗</a>}<form action={deleteCertificate}><input type="hidden" name="id" value={certificate.id}/><button className="rounded-xl border border-red-200 px-4 py-2 text-sm font-black text-red-700">Delete</button></form></div></article>) : <div className="md:col-span-2 rounded-[24px] border border-dashed border-slate-300 bg-white p-12 text-center"><h3 className="text-xl font-black">No certificates yet</h3><p className="mx-auto mt-2 max-w-md leading-7 text-slate-500">Add professional certifications, licences or course credentials you want available for relevant resume versions.</p></div>}</div></section></section>
-  </main>;
+        <section className="jc-stats-grid">
+          <Stat label="Credentials" value={certificates?.length ?? 0} note="saved to your library" />
+          <Stat label="Proof files" value={proofCount} note="private PDF/image proof" />
+          <Stat label="Ready to reuse" value={certificates?.length ?? 0} note="available in resume builder" />
+          <Stat label="Expired" value={(certificates ?? []).filter((item: any) => item.expiry_date && new Date(item.expiry_date).getTime() < Date.now()).length} note="review before using" />
+        </section>
+
+        <section className="jc-tool-grid">
+          <aside className="jc-card jc-tool-panel self-start">
+            <div className="flex items-start justify-between gap-4"><div><p className="jc-eyebrow">ADD CREDENTIAL</p><h2 className="jc-section-title">Save a certificate</h2></div><span className="jc-ready-pill">Private</span></div>
+            <p className="jc-section-subtitle">Only add credentials you genuinely hold. Optional proof files remain private.</p>
+            <form action={saveCertificate} className="mt-5 grid gap-4">
+              <Field name="name" label="Certificate name" placeholder="Google Data Analytics" required />
+              <Field name="issuer" label="Issuing organisation" placeholder="Google / Coursera" required />
+              <div className="grid grid-cols-2 gap-3"><Field name="issueDate" label="Issue date" type="date" /><Field name="expiryDate" label="Expiry" type="date" /></div>
+              <Field name="credentialId" label="Credential ID" placeholder="Optional" />
+              <Field name="credentialUrl" label="Credential URL" type="url" placeholder="https://..." />
+              <label className="jc-form-field">Private proof<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="jc-input mt-2 text-xs" /><span className="mt-2 block text-[11px] font-normal text-[#789087]">PDF, JPG or PNG up to 5 MB.</span></label>
+              <button className="jc-button-primary">Add certificate →</button>
+            </form>
+          </aside>
+
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="jc-eyebrow">YOUR CREDENTIALS</p><h2 className="jc-section-title">Ready for relevant resume versions</h2></div><span className="text-xs font-bold text-[#789087]">{certificates?.length ?? 0} saved</span></div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {certificates?.length ? certificates.map((certificate: any) => (
+                <article key={certificate.id} className="jc-card p-5">
+                  <div className="flex items-start justify-between gap-4"><div><p className="jc-eyebrow !text-[10px]">{certificate.issuer}</p><h3 className="jc-section-title !mt-2 !text-[22px]">{certificate.name}</h3></div>{certificate.storage_path ? <span className="jc-ready-pill">Proof saved</span> : null}</div>
+                  <div className="mt-5 grid gap-2 text-xs text-[#6f887f]">
+                    {certificate.issue_date ? <div className="rounded-xl bg-[#efede7] px-3 py-2.5">Issued {new Date(certificate.issue_date).toLocaleDateString("en-IN")}</div> : null}
+                    {certificate.expiry_date ? <div className="rounded-xl bg-[#efede7] px-3 py-2.5">Expires {new Date(certificate.expiry_date).toLocaleDateString("en-IN")}</div> : null}
+                    {certificate.credential_id ? <div className="rounded-xl bg-[#efede7] px-3 py-2.5">ID: {certificate.credential_id}</div> : null}
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-2">{certificate.credential_url ? <a href={certificate.credential_url} target="_blank" rel="noreferrer" className="jc-button-secondary !px-3 !py-2 text-xs">View credential ↗</a> : null}<form action={deleteCertificate}><input type="hidden" name="id" value={certificate.id} /><button className="jc-button-secondary !border-red-200 !px-3 !py-2 text-xs !text-red-700">Delete</button></form></div>
+                </article>
+              )) : <div className="jc-card p-10 text-center md:col-span-2"><h3 className="jc-section-title">No certificates yet</h3><p className="jc-section-subtitle">Add professional certifications, licences or course credentials you want available for relevant resume versions.</p></div>}
+            </div>
+          </section>
+        </section>
+      </div>
+    </WorkspaceShell>
+  );
 }
 
-function Field({ name, label, placeholder = "", type = "text", required = false }: { name: string; label: string; placeholder?: string; type?: string; required?: boolean }) { return <label className="block text-sm font-black">{label}<input name={name} type={type} required={required} placeholder={placeholder} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-normal outline-none transition focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"/></label>; }
+function PublicCertificatesPreview() {
+  return <WorkspaceShell active="certificates" authenticated={false} name="Your profile" headline="Candidate" strength={0}><div className="jc-content-wrap"><section className="jc-tool-hero"><div><p className="jc-eyebrow">PROOF, READY WHEN NEEDED</p><h1 className="jc-page-title">Certificates</h1><p className="jc-page-copy">Save credentials once and keep private proof connected to the resume versions that actually need it.</p></div><Link href="/certificates?auth=signup" scroll={false} className="jc-button-primary">Build my library →</Link></section><div className="jc-profile-layout"><article className="jc-dark-card jc-profile-identity"><p className="jc-eyebrow !text-[#f49a48]">PRIVATE BY DEFAULT</p><h2 className="jc-section-title !mt-4 !text-white">Your proof stays yours.</h2><p className="mt-3 text-sm leading-7 text-[#a4b9b1]">Credential files are not public profile decorations. They are private source material you can use when relevant.</p></article><article className="jc-card jc-toolkit-card"><p className="jc-eyebrow">WHAT YOU CAN SAVE</p><h2 className="jc-section-title">A clean credential library</h2><div className="jc-tool-list">{["Certificate name and issuer", "Issue and expiry dates", "Credential ID or verification URL", "Optional private PDF/JPG/PNG proof"].map((item) => <div key={item} className="jc-tool-list-item text-sm font-bold">✓ {item}</div>)}</div></article></div></div></WorkspaceShell>;
+}
+
+function Field({ name, label, placeholder = "", type = "text", required = false }: { name: string; label: string; placeholder?: string; type?: string; required?: boolean }) {
+  return <label className="jc-form-field">{label}<input name={name} type={type} required={required} placeholder={placeholder} className="jc-input" /></label>;
+}
+
+function Stat({ label, value, note }: { label: string; value: number; note: string }) {
+  return <div className="jc-card jc-stat-card"><div className="jc-stat-top"><span>{label}</span><span className="jc-stat-icon">◇</span></div><div className="jc-stat-value">{value}</div><div className="jc-stat-note">{note}</div></div>;
+}
