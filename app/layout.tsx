@@ -11,23 +11,23 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://jobcraft.hritiknai
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "JobCraft | AI Career Platform for India",
+    default: "JobCraft | Career Platform for India",
     template: "%s | JobCraft",
   },
-  description: "Find better-fit jobs, improve your resume, and manage your job search with AI built for the Indian market.",
+  description: "Find better-fit jobs, improve your resume, and manage your job search with career tools built for the Indian market.",
   applicationName: "JobCraft",
-  keywords: ["jobs India", "AI job matching", "resume builder", "career assistant", "application tracker"],
+  keywords: ["jobs India", "job matching", "resume builder", "career assistant", "application tracker"],
   openGraph: {
     type: "website",
     siteName: "JobCraft",
-    title: "JobCraft | AI Career Platform for India",
-    description: "Find better-fit jobs, improve your resume, and manage your job search with AI built for the Indian market.",
+    title: "JobCraft | Career Platform for India",
+    description: "Find better-fit jobs, improve your resume, and manage your job search with career tools built for the Indian market.",
     url: SITE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "JobCraft | AI Career Platform for India",
-    description: "Find better-fit jobs, improve your resume, and manage your job search with AI built for the Indian market.",
+    title: "JobCraft | Career Platform for India",
+    description: "Find better-fit jobs, improve your resume, and manage your job search with career tools built for the Indian market.",
   },
 };
 
