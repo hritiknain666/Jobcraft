@@ -9,6 +9,16 @@ import { JobsSidebar } from "./_components/jobs-sidebar";
 
 const EMPTY_FACETS: JobFacets = { titles: [], locations: [], skills: [], workModes: [] };
 
+function safeSearchTerm(value: string | undefined) {
+  return value?.trim().slice(0, 120).replace(/[(),]/g, " ").replace(/\s+/g, " ") ?? "";
+}
+
+function finiteNumber(value: string | undefined) {
+  if (!value?.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 export default async function JobsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -25,14 +35,17 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   }
 
   const facets = await getJobFacets(supabase).catch(() => EMPTY_FACETS);
+  const searchTerm = safeSearchTerm(params.q);
+  const experience = finiteNumber(params.experience);
+  const salary = finiteNumber(params.salary);
 
   let query = supabase.from("jobs").select("*").eq("is_active", true).order("posted_at", { ascending: false });
-  if (params.q) query = query.or(`title.ilike.%${params.q}%,company.ilike.%${params.q}%,description.ilike.%${params.q}%`);
-  if (params.location) query = query.ilike("location", `%${params.location}%`);
-  if (params.work_mode) query = query.eq("work_mode", params.work_mode);
-  if (params.experience) query = query.lte("experience_min", Number(params.experience));
-  if (params.salary) query = query.gte("salary_max_lpa", Number(params.salary));
-  if (params.skill) query = query.contains("skills", [params.skill]);
+  if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+  if (params.location?.trim()) query = query.ilike("location", `%${params.location.trim().slice(0, 120)}%`);
+  if (params.work_mode?.trim()) query = query.eq("work_mode", params.work_mode.trim().slice(0, 40));
+  if (experience !== null) query = query.lte("experience_min", experience);
+  if (salary !== null) query = query.gte("salary_max_lpa", salary);
+  if (params.skill?.trim()) query = query.contains("skills", [params.skill.trim().slice(0, 80)]);
 
   const { data: jobs, error } = await query;
   const resultCount = jobs?.length ?? 0;
