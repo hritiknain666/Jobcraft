@@ -15,6 +15,7 @@ type AdzunaResponse = {
   }>;
 };
 
+// This adapter is not connected to a live importer yet. Validate India salary units from a real API response before enabling salary persistence.
 export const normalizeAdzunaIndia: JobSourceAdapter<AdzunaResponse> = (payload) =>
   (payload.results ?? []).flatMap((job) => {
     if (!job.id || !job.title || !job.company?.display_name) return [];
@@ -24,8 +25,8 @@ export const normalizeAdzunaIndia: JobSourceAdapter<AdzunaResponse> = (payload) 
       title: job.title,
       company: job.company.display_name,
       location: job.location?.display_name ?? "India",
-      salaryMinLpa: typeof job.salary_min === "number" ? job.salary_min / 100000 : null,
-      salaryMaxLpa: typeof job.salary_max === "number" ? job.salary_max / 100000 : null,
+      salaryMinLpa: null,
+      salaryMaxLpa: null,
       description: job.description ?? "",
       applyUrl: job.redirect_url ?? null,
       postedAt: job.created ?? null,
