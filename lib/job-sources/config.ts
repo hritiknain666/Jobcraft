@@ -8,6 +8,10 @@ function readSecret(value: string | undefined) {
   return cleaned ? cleaned : null;
 }
 
+function readFlag(value: string | undefined) {
+  return value?.trim().toLowerCase() === "true";
+}
+
 export function getAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaConfig | null {
   const appId = readSecret(env.ADZUNA_APP_ID);
   const appKey = readSecret(env.ADZUNA_APP_KEY);
@@ -16,8 +20,19 @@ export function getAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaCon
   return { appId, appKey };
 }
 
+export function isAdzunaPublicationApproved(env: NodeJS.ProcessEnv = process.env) {
+  return readFlag(env.ADZUNA_PUBLISHING_READY);
+}
+
+export function isAdzunaAttributionReady(env: NodeJS.ProcessEnv = process.env) {
+  return readFlag(env.ADZUNA_ATTRIBUTION_READY);
+}
+
+// Persisted publishing requires both provider/commercial approval and the exact
+// provider attribution treatment to be verified in production. Preview imports
+// remain available before either flag is enabled.
 export function isAdzunaPublishingReady(env: NodeJS.ProcessEnv = process.env) {
-  return env.ADZUNA_PUBLISHING_READY?.trim().toLowerCase() === "true";
+  return isAdzunaPublicationApproved(env) && isAdzunaAttributionReady(env);
 }
 
 export function requireAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaConfig {
