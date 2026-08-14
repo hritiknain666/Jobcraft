@@ -4,20 +4,23 @@ export const metadata = { title: "Terms of Use" };
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[#f6f7fb] px-5 py-12 text-[#0b1020] sm:px-8">
-      <article className="mx-auto max-w-3xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-        <Link href="/" className="text-sm font-black text-violet-600">← JobCraft</Link>
-        <h1 className="mt-6 text-4xl font-black tracking-[-.04em]">Terms of Use</h1>
-        <p className="mt-3 text-sm text-slate-500">Launch draft · Last updated 14 August 2026</p>
-        <div className="mt-8 space-y-6 leading-7 text-slate-600">
-          <section><h2 className="text-xl font-black text-slate-950">Using JobCraft</h2><p className="mt-2">JobCraft provides job-discovery, career-profile, resume, application-tracking and career-assistance tools. You are responsible for information you submit and for reviewing generated or matched content before relying on it.</p></section>
-          <section><h2 className="text-xl font-black text-slate-950">Job matches and career tools</h2><p className="mt-2">Match scores and career suggestions are decision-support signals, not guarantees of employment, interviews, salary, eligibility or employer outcomes. Always verify important job information with the employer or original listing provider.</p></section>
-          <section><h2 className="text-xl font-black text-slate-950">Listings and external services</h2><p className="mt-2">Sample roles are demonstrations and are labeled as such. Future live listings may originate from third-party providers and may link to external services. Their availability, accuracy and terms are controlled by those providers.</p></section>
-          <section><h2 className="text-xl font-black text-slate-950">Acceptable use</h2><p className="mt-2">Do not misuse the service, attempt unauthorized access, interfere with its operation, submit unlawful content, impersonate others, or use automated access in ways that violate applicable rules or third-party rights.</p></section>
-          <section><h2 className="text-xl font-black text-slate-950">Availability</h2><p className="mt-2">Features may change as JobCraft develops. We may suspend features when needed for security, maintenance, legal compliance or provider availability.</p></section>
-          <section className="rounded-2xl bg-amber-50 p-5 text-amber-950"><h2 className="font-black">Pre-launch notice</h2><p className="mt-1 text-sm leading-6">These are provisional launch terms. The responsible business/legal identity, official contact details, governing-law terms and other required provisions will be completed before full public launch.</p></section>
+    <main className="min-h-screen bg-[#f5f2ea] px-5 py-10 text-[#173f33] sm:px-8 sm:py-14">
+      <article className="mx-auto max-w-4xl rounded-[28px] border border-[#d9d2c6] bg-[#fbfaf6] p-6 shadow-[0_20px_55px_rgba(35,49,43,.07)] sm:p-10">
+        <div className="flex items-center justify-between gap-4"><Link href="/" className="flex items-center gap-3 text-inherit no-underline"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f49a48] text-lg">✣</span><span className="jc-serif text-2xl font-bold">JobCraft</span></Link><Link href="/" className="jc-text-link">← Home</Link></div>
+        <div className="mt-10"><p className="jc-eyebrow">CLEAR EXPECTATIONS</p><h1 className="jc-page-title !text-[clamp(2.8rem,6vw,4.8rem)]">Terms of Use</h1><p className="mt-3 text-sm text-[#789087]">Launch draft · Last updated 14 August 2026</p></div>
+        <div className="mt-9 space-y-7 text-sm leading-8 text-[#5f786f]">
+          <Section title="Using JobCraft">JobCraft provides job-discovery, career-profile, resume, application-tracking and career-assistance tools. You are responsible for information you submit and for reviewing generated or matched content before relying on it.</Section>
+          <Section title="Job matches and career tools">Match scores and career suggestions are decision-support signals, not guarantees of employment, interviews, salary, eligibility or employer outcomes. Always verify important job information with the employer or original listing provider.</Section>
+          <Section title="Listings and external services">Sample roles are demonstrations and are labeled as such. Future live listings may originate from third-party providers and may link to external services. Their availability, accuracy and terms are controlled by those providers.</Section>
+          <Section title="Acceptable use">Do not misuse the service, attempt unauthorized access, interfere with its operation, submit unlawful content, impersonate others, or use automated access in ways that violate applicable rules or third-party rights.</Section>
+          <Section title="Availability">Features may change as JobCraft develops. We may suspend features when needed for security, maintenance, legal compliance or provider availability.</Section>
+          <section className="rounded-[20px] border border-[#ead1af] bg-[#fbf0df] p-5 text-[#76573b]"><p className="jc-eyebrow !text-[#b86e2d]">PRE-LAUNCH NOTICE</p><p className="mt-3 text-sm leading-7">These are provisional launch terms. The responsible business/legal identity, official contact details, governing-law terms and other required provisions will be completed before full public launch.</p></section>
         </div>
       </article>
     </main>
   );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="border-t border-[#e5dfd5] pt-6"><h2 className="jc-serif text-2xl font-bold text-[#173f33]">{title}</h2><p className="mt-3">{children}</p></section>;
 }
