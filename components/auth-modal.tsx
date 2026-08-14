@@ -7,13 +7,19 @@ import { createClient } from "@/lib/supabase/client";
 
 type AuthModalProps = { authenticated: boolean };
 
-const protectedPaths = ["/dashboard", "/applications", "/profile", "/certificates", "/cover-letter", "/resume/builder", "/resume/tailor"];
+const protectedPaths = ["/jobs", "/applications", "/profile", "/certificates", "/cover-letter", "/resume", "/resumes", "/career-assistant"];
+
+function safeNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/dashboard";
+  return value;
+}
 
 export default function AuthModal({ authenticated }: AuthModalProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const mode = searchParams.get("auth");
+  const requestedNext = searchParams.get("next");
   const isOpen = mode === "login" || mode === "signup";
   const supabase = useMemo(() => createClient(), []);
   const [error, setError] = useState("");
@@ -21,15 +27,24 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
 
-  function hrefFor(nextMode?: "login" | "signup") {
+  function hrefFor(nextMode?: "login" | "signup", nextTarget?: string | null) {
     const params = new URLSearchParams(searchParams.toString());
-    if (nextMode) params.set("auth", nextMode); else params.delete("auth");
+    if (nextMode) {
+      params.set("auth", nextMode);
+      if (nextTarget) params.set("next", safeNextPath(nextTarget));
+    } else {
+      params.delete("auth");
+      params.delete("next");
+    }
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
   }
 
   function emailRedirectTo() {
-    return `${window.location.origin}/auth/login?message=${encodeURIComponent("Email confirmed. You can log in now.")}`;
+    const params = new URLSearchParams({ message: "Email confirmed. You can log in now." });
+    const next = safeNextPath(requestedNext);
+    if (next !== "/dashboard") params.set("next", next);
+    return `${window.location.origin}/auth/login?${params.toString()}`;
   }
 
   useEffect(() => {
@@ -42,15 +57,22 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
       if (url.origin !== window.location.origin) return;
 
       let nextMode: "login" | "signup" | null = null;
+      let nextTarget: string | null = null;
+
       if (url.pathname === "/auth/login") nextMode = "login";
       if (url.pathname === "/auth/signup") nextMode = "signup";
-      if (!authenticated && protectedPaths.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`))) nextMode = "login";
+
+      if (!authenticated && protectedPaths.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`))) {
+        nextMode = "login";
+        nextTarget = `${url.pathname}${url.search}`;
+      }
+
       if (!nextMode) return;
 
       event.preventDefault();
       setError("");
       setMessage("");
-      router.replace(hrefFor(nextMode), { scroll: false });
+      router.replace(hrefFor(nextMode, nextTarget ?? url.searchParams.get("next")), { scroll: false });
     }
 
     document.addEventListener("click", handleClick);
@@ -97,7 +119,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (authError) return setError(authError.message);
-      router.replace("/dashboard");
+      router.replace(safeNextPath(requestedNext));
       router.refresh();
       return;
     }
@@ -107,7 +129,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     setLoading(false);
     if (authError) return setError(authError.message);
     if (data.session) {
-      router.replace("/dashboard");
+      router.replace(safeNextPath(requestedNext));
       router.refresh();
       return;
     }
@@ -142,7 +164,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
 
         {pendingEmail && message && <div className="mt-4 rounded-xl border border-[#cfe0d8] bg-[#e9f4ed] p-3.5 text-sm text-[#285844]"><p className="font-black">No email yet?</p><p className="mt-1 text-xs leading-5">Check spam first, then resend the confirmation to <b>{pendingEmail}</b>.</p><button type="button" disabled={loading} onClick={resend} className="mt-3 rounded-lg bg-[#fbfaf6] px-3.5 py-2 text-xs font-black text-[#278363] shadow-sm ring-1 ring-[#bfd4ca] disabled:opacity-60">Resend confirmation</button></div>}
 
-        <p className="mt-6 text-center text-sm text-[#789087]">{mode === "login" ? "New to JobCraft?" : "Already have an account?"} <button onClick={() => { setError(""); setMessage(""); router.replace(hrefFor(mode === "login" ? "signup" : "login"), { scroll: false }); }} className="font-black text-[#278363]">{mode === "login" ? "Create one" : "Log in"}</button></p>
+        <p className="mt-6 text-center text-sm text-[#789087]">{mode === "login" ? "New to JobCraft?" : "Already have an account?"} <button onClick={() => { setError(""); setMessage(""); router.replace(hrefFor(mode === "login" ? "signup" : "login", requestedNext), { scroll: false }); }} className="font-black text-[#278363]">{mode === "login" ? "Create one" : "Log in"}</button></p>
         <p className="mt-5 text-center text-[11px] leading-5 text-[#9aaba4]">By continuing, you agree to keep JobCraft profile information accurate and use the platform responsibly.</p>
       </div>
     </section>
