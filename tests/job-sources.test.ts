@@ -10,6 +10,10 @@ import { extractJobMetadata } from "../lib/job-sources/extract-metadata";
 import { normalizeJob } from "../lib/job-sources/normalize";
 import { validateLiveImportBatch, validateNormalizedJob } from "../lib/job-sources/validate";
 
+function env(values: Record<string, string | undefined>): NodeJS.ProcessEnv {
+  return { NODE_ENV: "test", ...values } as NodeJS.ProcessEnv;
+}
+
 test("unknown provider metadata stays null", () => {
   const job = normalizeJob({
     source: "Provider",
@@ -58,29 +62,29 @@ test("duplicate provider identities are rejected within one import batch", () =>
 });
 
 test("Adzuna configuration requires both credentials", () => {
-  assert.equal(getAdzunaConfig({ ADZUNA_APP_ID: "id" } as NodeJS.ProcessEnv), null);
-  assert.equal(getAdzunaConfig({ ADZUNA_APP_KEY: "key" } as NodeJS.ProcessEnv), null);
+  assert.equal(getAdzunaConfig(env({ ADZUNA_APP_ID: "id" })), null);
+  assert.equal(getAdzunaConfig(env({ ADZUNA_APP_KEY: "key" })), null);
   assert.deepEqual(
-    getAdzunaConfig({ ADZUNA_APP_ID: " id ", ADZUNA_APP_KEY: " key " } as NodeJS.ProcessEnv),
+    getAdzunaConfig(env({ ADZUNA_APP_ID: " id ", ADZUNA_APP_KEY: " key " })),
     { appId: "id", appKey: "key" }
   );
 });
 
 test("Adzuna persisted publishing requires approval and attribution readiness", () => {
-  const approvedOnly = { ADZUNA_PUBLISHING_READY: "true" } as NodeJS.ProcessEnv;
+  const approvedOnly = env({ ADZUNA_PUBLISHING_READY: "true" });
   assert.equal(isAdzunaPublicationApproved(approvedOnly), true);
   assert.equal(isAdzunaAttributionReady(approvedOnly), false);
   assert.equal(isAdzunaPublishingReady(approvedOnly), false);
 
-  const attributionOnly = { ADZUNA_ATTRIBUTION_READY: "TRUE" } as NodeJS.ProcessEnv;
+  const attributionOnly = env({ ADZUNA_ATTRIBUTION_READY: "TRUE" });
   assert.equal(isAdzunaPublicationApproved(attributionOnly), false);
   assert.equal(isAdzunaAttributionReady(attributionOnly), true);
   assert.equal(isAdzunaPublishingReady(attributionOnly), false);
 
-  const ready = {
+  const ready = env({
     ADZUNA_PUBLISHING_READY: " true ",
     ADZUNA_ATTRIBUTION_READY: "true",
-  } as NodeJS.ProcessEnv;
+  });
   assert.equal(isAdzunaPublishingReady(ready), true);
 });
 
