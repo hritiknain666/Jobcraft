@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const publicPreviewRewrites: Record<string, string> = {
+  "/resume/builder": "/preview/resume-builder",
+  "/resume/tailor": "/preview/resume-tailor",
+};
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -27,10 +32,20 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh and verify the cookie-backed session for Server Components.
-  // Browsing product pages is intentionally public: pages render useful
-  // previews for signed-out visitors. Authentication is enforced only when
-  // a user performs a personal action such as saving, uploading or tracking.
-  await supabase.auth.getClaims();
+  // Product browsing is public. Personal actions remain protected by their
+  // server actions/RLS. Two deep tools still require a personal workspace to
+  // render, so signed-out visitors see an internal preview at the same URL.
+  const { data } = await supabase.auth.getClaims();
+  const authenticated = Boolean(data?.claims?.sub);
+  const previewPath = publicPreviewRewrites[request.nextUrl.pathname];
+
+  if (!authenticated && previewPath) {
+    const previewUrl = request.nextUrl.clone();
+    previewUrl.pathname = previewPath;
+    const rewritten = NextResponse.rewrite(previewUrl);
+    response.cookies.getAll().forEach((cookie) => rewritten.cookies.set(cookie));
+    return rewritten;
+  }
 
   return response;
 }
