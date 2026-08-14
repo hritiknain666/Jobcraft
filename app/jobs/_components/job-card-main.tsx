@@ -6,6 +6,7 @@ export function JobCardMain({ job, match }: { job: any; match: any }) {
   const source = String(job.source ?? "").trim();
   const isSample = source === "JobCraft";
   const isAdzuna = source.toLowerCase() === "adzuna";
+  const workMode = job.work_mode || "Work mode not listed";
 
   return (
     <div className="p-5 sm:p-6">
@@ -20,7 +21,7 @@ export function JobCardMain({ job, match }: { job: any; match: any }) {
             {isAdzuna && <a href="https://www.adzuna.in/" target="_blank" rel="noreferrer" className="text-[11px] font-black text-slate-500 underline decoration-slate-300 underline-offset-2">Jobs by Adzuna ↗</a>}
           </div>
           <h3 className="mt-1 text-2xl font-black">{job.title}</h3>
-          <p className="mt-2 text-sm text-slate-500">{job.location} · {job.work_mode} · {job.salary_min_lpa ? `₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA` : "Salary not listed"}</p>
+          <p className="mt-2 text-sm text-slate-500">{job.location} · {workMode} · {job.salary_min_lpa ? `₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA` : "Salary not listed"}</p>
         </div>
       </div>
       <p className="mt-5 line-clamp-2 leading-7 text-slate-600">{job.description}</p>
@@ -29,6 +30,7 @@ export function JobCardMain({ job, match }: { job: any; match: any }) {
           const matched = match?.matched.includes(skill);
           return <span key={skill} className={`rounded-lg px-3 py-1.5 text-xs font-black ${matched ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{skill}{matched ? " ✓" : ""}</span>;
         })}
+        {!job.skills?.length && <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">Skills may be listed in the description</span>}
       </div>
     </div>
   );
