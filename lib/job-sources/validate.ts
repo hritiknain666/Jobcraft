@@ -10,11 +10,15 @@ export function validateNormalizedJob(job: NormalizedJob) {
     throw new Error("Normalized jobs require source, externalId, title, and company.");
   }
 
-  if (!Number.isFinite(job.experienceMin) || job.experienceMin < 0) {
+  if (job.experienceMin !== null && (!Number.isFinite(job.experienceMin) || job.experienceMin < 0)) {
     throw new Error(`Invalid experienceMin for ${jobIdentity(job)}.`);
   }
 
-  if (job.experienceMax !== null && (!Number.isFinite(job.experienceMax) || job.experienceMax < job.experienceMin)) {
+  if (job.experienceMax !== null && (!Number.isFinite(job.experienceMax) || job.experienceMax < 0)) {
+    throw new Error(`Invalid experienceMax for ${jobIdentity(job)}.`);
+  }
+
+  if (job.experienceMin !== null && job.experienceMax !== null && job.experienceMax < job.experienceMin) {
     throw new Error(`Invalid experience range for ${jobIdentity(job)}.`);
   }
 
