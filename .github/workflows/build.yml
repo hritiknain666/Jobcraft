@@ -33,6 +33,9 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
+      - name: Core regression tests
+        run: npm test
+
       - name: Next.js build
         run: npm run build
 
