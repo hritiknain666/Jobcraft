@@ -17,6 +17,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <label className="block text-sm font-black">Password
           <input name="password" type="password" required minLength={6} autoComplete="current-password" placeholder="Your password" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
         </label>
+        <div className="flex justify-end">
+          <Link href="/auth/forgot-password" className="text-sm font-black text-violet-600 transition hover:text-violet-700">
+            Forgot password?
+          </Link>
+        </div>
         <button className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 font-black text-white shadow-[0_16px_35px_rgba(124,58,237,.25)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_45px_rgba(124,58,237,.32)]">Log in to JobCraft →</button>
       </form>
 
