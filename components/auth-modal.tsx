@@ -115,35 +115,35 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
   }
 
   return <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6">
-    <button aria-label="Close authentication modal" onClick={close} className="absolute inset-0 bg-slate-950/45 backdrop-blur-[3px]" />
-    <section role="dialog" aria-modal="true" aria-labelledby="auth-title" className="relative z-10 w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_35px_100px_rgba(15,23,42,.28)]">
-      <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
+    <button aria-label="Close authentication modal" onClick={close} className="absolute inset-0 bg-[#102f26]/55 backdrop-blur-[4px]" />
+    <section role="dialog" aria-modal="true" aria-labelledby="auth-title" className="relative z-10 w-full max-w-md overflow-hidden rounded-[26px] border border-[#d8d1c5] bg-[#fbfaf6] shadow-[0_35px_100px_rgba(18,60,48,.30)]">
+      <div className="border-b border-[#e4ded4] px-6 py-5 sm:px-8">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm font-black text-white">JC</span><span className="text-xl font-black">Job<span className="text-violet-600">Craft</span></span></div>
-          <button onClick={close} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg font-black text-slate-500 hover:bg-slate-200">×</button>
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f49a48] text-lg text-[#173f33]">✣</span><span className="jc-serif text-2xl font-bold text-[#173f33]">JobCraft</span></div>
+          <button onClick={close} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#efede7] text-lg font-black text-[#718981] hover:bg-[#e6e1d8]">×</button>
         </div>
       </div>
 
       <div className="px-6 py-7 sm:px-8 sm:py-8">
-        <p className="text-xs font-black tracking-[.14em] text-violet-600">{mode === "login" ? "WELCOME BACK" : "CREATE YOUR WORKSPACE"}</p>
-        <h2 id="auth-title" className="mt-2 text-3xl font-black tracking-[-.035em]">{mode === "login" ? "Continue your JobCraft search." : "Start your JobCraft workspace."}</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "login" ? "Your jobs, resumes, certificates and applications stay connected in one place." : "Create an account to save your profile, resumes, certificates and applications."}</p>
+        <p className="jc-eyebrow">{mode === "login" ? "WELCOME BACK" : "CREATE YOUR WORKSPACE"}</p>
+        <h2 id="auth-title" className="jc-serif mt-2 text-3xl font-bold leading-tight text-[#173f33]">{mode === "login" ? "Continue your JobCraft search." : "Build your career signal."}</h2>
+        <p className="mt-3 text-sm leading-6 text-[#789087]">{mode === "login" ? "Your roles, resumes, certificates and applications stay connected in one workspace." : "Create an account to save your profile, resumes, certificates and application plan."}</p>
 
         {error && <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm leading-6 text-red-700">{error}</div>}
         {message && <div className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-800">{message}</div>}
 
         <form onSubmit={submit} className="mt-6 space-y-4">
-          {mode === "signup" && <label className="block text-sm font-black">Full name<input name="fullName" required autoComplete="name" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>}
-          <label className="block text-sm font-black">Email<input name="email" type="email" required autoComplete="email" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
-          <label className="block text-sm font-black">Password<input name="password" type="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-normal outline-none focus:border-violet-400 focus:bg-white" /></label>
-          {mode === "login" && <div className="flex justify-end"><Link href="/auth/forgot-password" className="text-sm font-black text-violet-600 hover:text-violet-700">Forgot password?</Link></div>}
-          <button disabled={loading} className="w-full rounded-xl bg-[#090d1f] px-5 py-3.5 font-black text-white transition hover:bg-violet-600 disabled:opacity-60">{loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</button>
+          {mode === "signup" && <label className="jc-form-field">Full name<input name="fullName" required maxLength={120} autoComplete="name" className="jc-input mt-2" /></label>}
+          <label className="jc-form-field">Email<input name="email" type="email" required maxLength={254} autoComplete="email" className="jc-input mt-2" /></label>
+          <label className="jc-form-field">Password<input name="password" type="password" required minLength={8} maxLength={128} autoComplete={mode === "login" ? "current-password" : "new-password"} className="jc-input mt-2" />{mode === "signup" ? <span className="mt-2 block text-[11px] font-normal text-[#789087]">Use at least 8 characters.</span> : null}</label>
+          {mode === "login" && <div className="flex justify-end"><Link href="/auth/forgot-password" className="jc-text-link">Forgot password?</Link></div>}
+          <button disabled={loading} className="jc-button-primary w-full disabled:opacity-60">{loading ? "Please wait…" : mode === "login" ? "Log in →" : "Create account →"}</button>
         </form>
 
-        {pendingEmail && message && <div className="mt-4 rounded-xl border border-violet-100 bg-violet-50/70 p-3.5 text-sm text-violet-900"><p className="font-black">No email yet?</p><p className="mt-1 text-xs leading-5 text-violet-700">Check spam first, then resend the confirmation to <b>{pendingEmail}</b>.</p><button type="button" disabled={loading} onClick={resend} className="mt-3 rounded-lg bg-white px-3.5 py-2 text-xs font-black text-violet-700 shadow-sm ring-1 ring-violet-200 disabled:opacity-60">Resend confirmation</button></div>}
+        {pendingEmail && message && <div className="mt-4 rounded-xl border border-[#cfe0d8] bg-[#e9f4ed] p-3.5 text-sm text-[#285844]"><p className="font-black">No email yet?</p><p className="mt-1 text-xs leading-5">Check spam first, then resend the confirmation to <b>{pendingEmail}</b>.</p><button type="button" disabled={loading} onClick={resend} className="mt-3 rounded-lg bg-[#fbfaf6] px-3.5 py-2 text-xs font-black text-[#278363] shadow-sm ring-1 ring-[#bfd4ca] disabled:opacity-60">Resend confirmation</button></div>}
 
-        <p className="mt-6 text-center text-sm text-slate-500">{mode === "login" ? "New to JobCraft?" : "Already have an account?"} <button onClick={() => { setError(""); setMessage(""); router.replace(hrefFor(mode === "login" ? "signup" : "login"), { scroll: false }); }} className="font-black text-violet-600">{mode === "login" ? "Create one" : "Log in"}</button></p>
-        <p className="mt-5 text-center text-[11px] leading-5 text-slate-400">By continuing, you agree to use JobCraft responsibly and keep profile information accurate.</p>
+        <p className="mt-6 text-center text-sm text-[#789087]">{mode === "login" ? "New to JobCraft?" : "Already have an account?"} <button onClick={() => { setError(""); setMessage(""); router.replace(hrefFor(mode === "login" ? "signup" : "login"), { scroll: false }); }} className="font-black text-[#278363]">{mode === "login" ? "Create one" : "Log in"}</button></p>
+        <p className="mt-5 text-center text-[11px] leading-5 text-[#9aaba4]">By continuing, you agree to keep JobCraft profile information accurate and use the platform responsibly.</p>
       </div>
     </section>
   </div>;
