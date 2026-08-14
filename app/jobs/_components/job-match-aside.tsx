@@ -1,7 +1,13 @@
 import Link from "next/link";
 
 export function JobMatchAside({ jobId, match }: { jobId: string; match: any }) {
-  const tone = match && match.score >= 75 ? "text-emerald-600" : match && match.score >= 55 ? "text-amber-600" : "text-slate-700";
+  const tone = match?.confidence === "limited"
+    ? "text-slate-500"
+    : match && match.score >= 75
+      ? "text-emerald-600"
+      : match && match.score >= 55
+        ? "text-amber-600"
+        : "text-slate-700";
 
   return (
     <aside className="border-t border-slate-100 bg-slate-50/70 p-5 lg:border-l lg:border-t-0">
@@ -15,7 +21,14 @@ export function JobMatchAside({ jobId, match }: { jobId: string; match: any }) {
             <span className={`text-3xl font-black ${tone}`}>{match.score}%</span>
           </div>
           <div className="mt-3 h-2 rounded-full bg-slate-200"><div className="h-2 rounded-full bg-emerald-500" style={{ width: `${match.score}%` }} /></div>
-          <p className="mt-3 text-xs leading-5 text-slate-500">{match.missing.length ? `${match.missing.length} listed skill gap${match.missing.length === 1 ? "" : "s"}.` : "Core listed skills covered."}</p>
+          <p className="mt-2 text-[11px] font-black uppercase tracking-[.08em] text-slate-400">{Math.round(match.evidenceCoverage * 100)}% evidence coverage</p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            {match.confidence === "limited"
+              ? "Provider data is limited, so treat this score as an early signal."
+              : match.missing.length
+                ? `${match.missing.length} listed skill gap${match.missing.length === 1 ? "" : "s"}.`
+                : "Known match signals are covered well."}
+          </p>
         </>
       ) : (
         <>
