@@ -4,27 +4,31 @@ JobCraft is an India-first career platform for job discovery, transparent job ma
 
 ## Current product state
 
-Implemented and build-verified on `main`:
+Implemented and build-verified:
 
 - Supabase authentication, profiles and SSR session refresh
 - Password recovery flow
 - Jobs search and filtering
+- Database-backed pagination for job results
+- 45-day freshness policy so stale listings stop appearing in search/facets
+- Skill filtering that can fall back to title/description text when a provider has no structured skill array
 - Shared transparent job-match scoring across the app
+- Match evidence coverage/confidence so sparse provider data cannot look artificially precise
 - Smart skill aliases (for example Power BI/PowerBI, React/React.js, PostgreSQL/Postgres)
 - Resume and career-product surfaces
 - Application tracking
 - Certificate support, private storage and ownership controls
 - Loading, error, empty and mobile navigation states
 - Job-source normalization architecture
+- Unknown provider work mode/experience preserved as unknown instead of invented defaults
 - Explicit sample-vs-live job labeling
 - Secure server-side job import endpoint with protected preview mode
 - Adzuna provider adapter, publishing gate and import orchestration
 - Atomic upsert using `(source, external_id)`
 - Dynamic job facets for titles, locations, skills and work modes
-- Scheduled live-job refresh workflow scaffold
 - Security headers, health endpoint, sitemap and robots metadata
 - Privacy Policy and Terms launch-draft pages
-- GitHub Actions verification for Next.js and Cloudflare/OpenNext builds
+- GitHub Actions production-dependency audit, regression tests, Next.js build and Cloudflare/OpenNext build
 
 ## Tech stack
 
@@ -45,13 +49,19 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
+Run the core regression suite with:
+
+```bash
+npm test
+```
+
 ## Environment variables
 
 See `.env.example` for required variables. Server-only secrets must never use the `NEXT_PUBLIC_` prefix.
 
 ## Live job imports
 
-The persistent live import path is intentionally disabled until production credentials, provider publication requirements and attribution checks are complete. Current sample roles remain clearly separated from future provider listings.
+Persistent live imports are intentionally disabled until production credentials, provider publication requirements and attribution checks are complete. Current sample roles remain clearly separated from future provider listings.
 
 Required server-side configuration for Adzuna access/publishing:
 
@@ -62,10 +72,14 @@ Required server-side configuration for Adzuna access/publishing:
 - `ADZUNA_PUBLISHING_READY` (keep `false` until publication requirements are complete)
 - `NEXT_PUBLIC_SITE_URL`
 
-The protected import endpoint supports previewing normalized provider data before any row is persisted.
+The protected import endpoint supports previewing normalized provider data before any row is persisted. The GitHub refresh workflow is deliberately `workflow_dispatch`-only until a controlled production preview/import is approved; re-enable a schedule only after that verification.
+
+## Cloudflare / Next.js compatibility note
+
+Next.js 16 deprecates the `middleware.ts` filename in favor of `proxy.ts`, but the currently pinned `@opennextjs/cloudflare` deployment path rejects the `proxy.ts` output as unsupported Node.js middleware. JobCraft therefore intentionally retains the working `middleware.ts` entrypoint for Cloudflare compatibility. CI verifies the OpenNext build, and this exception should be revisited when the adapter supports the Next.js proxy path without breaking deployment.
 
 ## Launch status
 
-The application code is in launch-preparation state. Remaining work is primarily external account configuration: production domain/HTTPS routing, provider credentials and publication requirements, deployment secrets, Supabase auth/security settings, and final legal/business identity details.
+The application code is in launch-preparation state. The remaining blockers are primarily external account/business configuration: live job-provider credentials and publication requirements, deployment/GitHub secrets, a final production domain, Supabase auth hardening that depends on plan/settings, and final legal/business identity details.
 
 See `LAUNCH_CHECKLIST.md` for the remaining production-launch steps.
