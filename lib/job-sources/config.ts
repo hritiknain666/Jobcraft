@@ -16,10 +16,14 @@ export function getAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaCon
   return { appId, appKey };
 }
 
+export function isAdzunaPublishingReady(env: NodeJS.ProcessEnv = process.env) {
+  return env.ADZUNA_PUBLISHING_READY?.trim().toLowerCase() === "true";
+}
+
 export function requireAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaConfig {
   const config = getAdzunaConfig(env);
   if (!config) {
-    throw new Error("Adzuna live imports are disabled until ADZUNA_APP_ID and ADZUNA_APP_KEY are configured.");
+    throw new Error("Adzuna access is disabled until ADZUNA_APP_ID and ADZUNA_APP_KEY are configured.");
   }
   return config;
 }
