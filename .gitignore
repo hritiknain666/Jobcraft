@@ -10,6 +10,9 @@
 /.next/
 /out/
 
+# OpenNext / Cloudflare generated output
+/.open-next/
+
 # production
 /build
 
