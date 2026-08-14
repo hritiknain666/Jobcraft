@@ -14,6 +14,7 @@
     "lib/skill-match.ts",
     "lib/job-match.ts",
     "lib/job-sources/config.ts",
+    "lib/job-sources/extract-metadata.ts",
     "lib/job-sources/types.ts",
     "lib/job-sources/normalize.ts",
     "lib/job-sources/source-kind.ts",
