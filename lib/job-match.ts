@@ -1,4 +1,4 @@
-import { compareSkills } from "@/lib/skill-match";
+import { compareSkills } from "./skill-match";
 
 export type MatchInput = {
   jobSkills: string[];
@@ -13,12 +13,21 @@ export type MatchInput = {
   jobTitle?: string | null;
 };
 
+export type MatchConfidence = "high" | "medium" | "limited";
+
 const normalize = (value: string) => value.trim().toLowerCase();
 
-export function getJobMatchLabel(score: number) {
+export function getJobMatchLabel(score: number, confidence: MatchConfidence = "high") {
+  if (confidence === "limited") return "Limited evidence";
   if (score >= 75) return "Strong fit";
   if (score >= 55) return "Potential fit";
   return "Review first";
+}
+
+export function getMatchConfidenceLabel(confidence: MatchConfidence) {
+  if (confidence === "high") return "High confidence";
+  if (confidence === "medium") return "Medium confidence";
+  return "Limited evidence";
 }
 
 export function calculateJobMatch(input: MatchInput) {
@@ -26,29 +35,79 @@ export function calculateJobMatch(input: MatchInput) {
     input.jobSkills,
     input.userSkills,
   );
-  const skillScore = input.jobSkills.length ? (matchedSkills.length / input.jobSkills.length) * 60 : 30;
+
+  let assessedWeight = 0;
+  let earnedWeight = 0;
+
+  if (input.jobSkills.length > 0) {
+    assessedWeight += 60;
+    earnedWeight += (matchedSkills.length / input.jobSkills.length) * 60;
+  }
+
   const userExp = Number(input.userExperience ?? 0);
-  const requiredExp = Number(input.jobMinExperience ?? 0);
-  const experienceScore = requiredExp === 0 ? 15 : Math.min(userExp / requiredExp, 1) * 15;
-  const preferredModes = (input.preferredWorkModes ?? []).map(normalize);
-  const modeScore = !preferredModes.length || !input.jobWorkMode || preferredModes.includes(normalize(input.jobWorkMode)) ? 10 : 3;
-  const locationScore = !input.userCity || !input.jobLocation || normalize(input.jobLocation).includes(normalize(input.userCity)) || normalize(input.jobWorkMode ?? "") === "remote" ? 5 : 1;
+  const hasExperienceRequirement = input.jobMinExperience !== null && input.jobMinExperience !== undefined && Number.isFinite(Number(input.jobMinExperience));
+  const requiredExp = hasExperienceRequirement ? Number(input.jobMinExperience) : null;
+  if (requiredExp !== null && requiredExp >= 0) {
+    assessedWeight += 15;
+    earnedWeight += requiredExp === 0 ? 15 : Math.min(userExp / requiredExp, 1) * 15;
+  }
+
+  const preferredModes = (input.preferredWorkModes ?? []).map(normalize).filter(Boolean);
+  const jobMode = input.jobWorkMode?.trim() ? normalize(input.jobWorkMode) : null;
+  const hasModeSignal = preferredModes.length > 0 && Boolean(jobMode);
+  const modeMatches = Boolean(jobMode && preferredModes.includes(jobMode));
+  if (hasModeSignal) {
+    assessedWeight += 10;
+    earnedWeight += modeMatches ? 10 : 0;
+  }
+
+  const userCity = input.userCity?.trim() ? normalize(input.userCity) : null;
+  const jobLocation = input.jobLocation?.trim() ? normalize(input.jobLocation) : null;
+  const hasLocationSignal = Boolean(userCity && jobLocation);
+  const locationMatches = Boolean(
+    hasLocationSignal &&
+    (jobLocation!.includes(userCity!) || jobMode === "remote")
+  );
+  if (hasLocationSignal) {
+    assessedWeight += 5;
+    earnedWeight += locationMatches ? 5 : 0;
+  }
+
   const targetRoles = (input.targetRoles ?? []).map(normalize).filter(Boolean);
   const title = normalize(input.jobTitle ?? "");
-  const roleMatches = Boolean(title) && targetRoles.some((role) => title.includes(role) || role.includes(title));
-  const roleScore = !targetRoles.length ? 10 : roleMatches ? 10 : 3;
-  const score = Math.max(0, Math.min(100, Math.round(skillScore + experienceScore + modeScore + locationScore + roleScore)));
+  const hasRoleSignal = Boolean(title) && targetRoles.length > 0;
+  const roleMatches = hasRoleSignal && targetRoles.some((role) => title.includes(role) || role.includes(title));
+  if (hasRoleSignal) {
+    assessedWeight += 10;
+    earnedWeight += roleMatches ? 10 : 0;
+  }
+
+  const evidenceCoverage = assessedWeight / 100;
+  const confidence: MatchConfidence = evidenceCoverage >= 0.75 ? "high" : evidenceCoverage >= 0.5 ? "medium" : "limited";
+  const score = assessedWeight > 0
+    ? Math.max(0, Math.min(100, Math.round((earnedWeight / assessedWeight) * 100)))
+    : 0;
 
   const strengths: string[] = [];
-  if (matchedSkills.length) strengths.push(`You match ${matchedSkills.length} of ${input.jobSkills.length} listed skills.`);
-  if (userExp >= requiredExp) strengths.push("Your experience meets the listed minimum.");
-  if (modeScore === 10) strengths.push("The work mode fits your preferences.");
-  if (roleScore === 10) strengths.push("The role aligns with your target jobs.");
+  if (input.jobSkills.length > 0 && matchedSkills.length) strengths.push(`You match ${matchedSkills.length} of ${input.jobSkills.length} listed skills.`);
+  if (requiredExp !== null && userExp >= requiredExp) strengths.push("Your experience meets the listed minimum.");
+  if (hasModeSignal && modeMatches) strengths.push("The work mode fits your preferences.");
+  if (hasRoleSignal && roleMatches) strengths.push("The role aligns with your target jobs.");
 
   const improvements: string[] = [];
   if (missingSkills.length) improvements.push(`Strengthen or demonstrate: ${missingSkills.slice(0, 4).join(", ")}.`);
-  if (userExp < requiredExp) improvements.push(`The role asks for about ${requiredExp} years of experience; highlight relevant projects and measurable results.`);
-  if (locationScore < 5) improvements.push("Check whether the location works for you or whether relocation is possible.");
+  if (requiredExp !== null && userExp < requiredExp) improvements.push(`The role asks for about ${requiredExp} years of experience; highlight relevant projects and measurable results.`);
+  if (hasModeSignal && !modeMatches) improvements.push("The listed work mode does not match your saved preferences.");
+  if (hasLocationSignal && !locationMatches) improvements.push("Check whether the location works for you or whether relocation is possible.");
 
-  return { score, matchedSkills, missingSkills, strengths, improvements };
+  return {
+    score,
+    confidence,
+    evidenceCoverage,
+    assessedWeight,
+    matchedSkills,
+    missingSkills,
+    strengths,
+    improvements,
+  };
 }
