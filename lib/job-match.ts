@@ -33,9 +33,10 @@ export function calculateJobMatch(input: MatchInput) {
   const preferredModes = (input.preferredWorkModes ?? []).map(normalize);
   const modeScore = !preferredModes.length || !input.jobWorkMode || preferredModes.includes(normalize(input.jobWorkMode)) ? 10 : 3;
   const locationScore = !input.userCity || !input.jobLocation || normalize(input.jobLocation).includes(normalize(input.userCity)) || normalize(input.jobWorkMode ?? "") === "remote" ? 5 : 1;
-  const targetRoles = (input.targetRoles ?? []).map(normalize);
+  const targetRoles = (input.targetRoles ?? []).map(normalize).filter(Boolean);
   const title = normalize(input.jobTitle ?? "");
-  const roleScore = !targetRoles.length || targetRoles.some((role) => title.includes(role) || role.includes(title)) ? 10 : 3;
+  const roleMatches = Boolean(title) && targetRoles.some((role) => title.includes(role) || role.includes(title));
+  const roleScore = !targetRoles.length ? 10 : roleMatches ? 10 : 3;
   const score = Math.max(0, Math.min(100, Math.round(skillScore + experienceScore + modeScore + locationScore + roleScore)));
 
   const strengths: string[] = [];
