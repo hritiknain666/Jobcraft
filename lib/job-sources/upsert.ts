@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { toJobsTableRow } from "./normalize";
-import { assertLiveImport } from "./source-kind";
 import type { NormalizedJob } from "./types";
+import { validateLiveImportBatch } from "./validate";
 
 export async function upsertLiveJobs(supabase: SupabaseClient, jobs: NormalizedJob[]) {
-  const rows = jobs.map(assertLiveImport).map(toJobsTableRow);
+  const rows = validateLiveImportBatch(jobs).map(toJobsTableRow);
   if (!rows.length) return [];
 
   const { data, error } = await supabase
