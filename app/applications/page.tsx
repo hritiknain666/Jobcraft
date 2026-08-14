@@ -1,7 +1,7 @@
 import Link from "next/link";
+import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { deleteApplication, updateApplicationStatus } from "./actions";
-import PremiumPageVisual from "@/components/premium-page-visual";
 
 const statuses = ["Saved", "Applied", "Screening", "Interview", "Offer", "Rejected"];
 
@@ -10,29 +10,123 @@ export default async function ApplicationsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <PublicApplicationsPreview />;
 
-  const { data: applications } = await supabase.from("applications").select("id,status,created_at,updated_at,jobs(id,title,company,location,work_mode,salary_min_lpa,salary_max_lpa)").eq("user_id", user.id).order("updated_at", { ascending: false });
-  const counts = Object.fromEntries(statuses.map(status => [status, applications?.filter((a: any) => a.status === status).length ?? 0]));
-  const activeCount = (counts.Applied ?? 0) + (counts.Screening ?? 0) + (counts.Interview ?? 0);
+  const [{ data: applications }, { data: profile }] = await Promise.all([
+    supabase.from("applications").select("id,status,created_at,updated_at,jobs(id,title,company,location,work_mode,salary_min_lpa,salary_max_lpa)").eq("user_id", user.id).order("updated_at", { ascending: false }),
+    supabase.from("profiles").select("full_name,headline,city,experience_years,skills,target_roles,preferred_work_modes").eq("id", user.id).maybeSingle(),
+  ]);
 
-  return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-    <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><div className="flex items-center gap-2"><Link href="/dashboard" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">Dashboard</Link><Link href="/jobs" className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white">Find jobs</Link></div></div></header>
+  const items = applications ?? [];
+  const counts = Object.fromEntries(statuses.map((status) => [status, items.filter((item: any) => item.status === status).length]));
+  const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
+  const appliedLane = items.filter((item: any) => ["Applied", "Screening"].includes(item.status));
+  const closed = items.filter((item: any) => item.status === "Rejected");
 
-    <section className="relative overflow-hidden border-b border-slate-200/70 bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_20%,rgba(124,58,237,.10),transparent_30%),radial-gradient(circle_at_90%_10%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1200px] gap-7 px-5 py-9 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:items-center"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">APPLICATION PIPELINE</p><h1 className="mt-2 text-4xl font-black tracking-[-.05em] sm:text-5xl">Keep every opportunity moving.</h1><p className="mt-3 max-w-2xl text-lg leading-8 text-slate-600">See what needs attention, update stages quickly and keep your entire search visible without spreadsheet chaos.</p><div className="mt-6 flex flex-wrap gap-3"><span className="rounded-full bg-violet-50 px-4 py-2 text-xs font-black text-violet-700">{activeCount} ACTIVE</span><span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">{counts.Interview ?? 0} INTERVIEWS</span><span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">{counts.Offer ?? 0} OFFERS</span></div></div><PremiumPageVisual variant="applications" compact /></div></section>
+  return (
+    <WorkspaceShell active="applications" name={profile?.full_name} headline={profile?.headline} strength={strength}>
+      <div className="jc-content-wrap">
+        <section className="jc-discover-head">
+          <div>
+            <p className="jc-eyebrow">YOUR SEARCH, IN MOTION</p>
+            <h1 className="jc-page-title">Application plan</h1>
+          </div>
+          <Link href="/jobs" className="jc-button-primary">Find a role to add →</Link>
+        </section>
 
-    <section className="mx-auto max-w-[1200px] px-5 py-8 sm:px-8 lg:py-10">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">{statuses.map(status=><div key={status} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-violet-200"><div className="flex items-center justify-between"><span className="text-sm font-black text-slate-600">{status}</span><span className={`h-2.5 w-2.5 rounded-full ${status==="Offer"?"bg-emerald-500":status==="Rejected"?"bg-slate-300":"bg-violet-500"}`}/></div><div className="mt-3 text-3xl font-black">{counts[status]}</div></div>)}</div>
+        <div className="jc-pipeline-pills">
+          <span className="jc-pipeline-pill is-active">All · {items.length}</span>
+          <span className="jc-pipeline-pill">Saved · {counts.Saved ?? 0}</span>
+          <span className="jc-pipeline-pill">Applied · {(counts.Applied ?? 0) + (counts.Screening ?? 0)}</span>
+          <span className="jc-pipeline-pill">Interview · {counts.Interview ?? 0}</span>
+          <span className="jc-pipeline-pill">Offer · {counts.Offer ?? 0}</span>
+          <span className="jc-pipeline-pill">Closed · {counts.Rejected ?? 0}</span>
+        </div>
 
-      <div className="mt-10 flex items-center justify-between"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">YOUR APPLICATIONS</p><h2 className="mt-2 text-2xl font-black">Recent activity</h2></div><Link href="/jobs" className="text-sm font-black text-violet-600">Add another job →</Link></div>
+        <section className="jc-board" aria-label="Application pipeline">
+          <BoardColumn title="Saved" note="Worth a closer look" items={items.filter((item: any) => item.status === "Saved")} />
+          <BoardColumn title="Applied" note="You made the move" items={appliedLane} />
+          <BoardColumn title="Interview" note="Conversations in motion" items={items.filter((item: any) => item.status === "Interview")} />
+          <BoardColumn title="Offer" note="A good problem to have" items={items.filter((item: any) => item.status === "Offer")} />
+        </section>
 
-      <div className="mt-5 space-y-4">{applications?.length?applications.map((app:any)=>{const job=app.jobs;return <article key={app.id} className="group rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_20px_55px_rgba(15,23,42,.08)] sm:p-6"><div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center"><div className="flex items-start gap-4"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#090d1f] font-black text-white shadow-lg">{job?.company?.slice(0,2).toUpperCase()??"JC"}</div><div><Link href={`/jobs/${job?.id}`} className="text-xl font-black hover:text-violet-600">{job?.title??"Job"}</Link><p className="mt-1 font-semibold text-slate-600">{job?.company}</p><p className="mt-2 text-sm text-slate-500">{job?.location} · {job?.work_mode}{job?.salary_min_lpa?` · ₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA`:""}</p><div className="mt-3 flex flex-wrap items-center gap-2"><span className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700">{app.status}</span><span className="text-xs text-slate-400">Updated {new Date(app.updated_at).toLocaleDateString("en-IN")}</span></div></div></div><div className="flex flex-col gap-3 sm:flex-row"><form action={updateApplicationStatus} className="flex gap-2"><input type="hidden" name="id" value={app.id}/><select name="status" defaultValue={app.status} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none focus:border-violet-400">{statuses.map(status=><option key={status}>{status}</option>)}</select><button className="rounded-xl bg-[#090d1f] px-4 py-3 font-black text-white transition hover:bg-violet-600">Update</button></form><form action={deleteApplication}><input type="hidden" name="id" value={app.id}/><button className="rounded-xl border border-slate-200 px-4 py-3 font-black text-slate-600">Remove</button></form></div></div></article>}):<div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-12 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-xl font-black text-violet-700">→</div><h2 className="mt-5 text-2xl font-black">Your tracker is ready.</h2><p className="mx-auto mt-2 max-w-md leading-7 text-slate-600">Save a role or mark it as applied from a JobCraft job page and it will appear here automatically.</p><Link href="/jobs" className="mt-6 inline-block rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white">Explore jobs →</Link></div>}</div>
-    </section>
-  </main>;
+        {closed.length ? (
+          <section className="jc-card mt-7 p-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div><p className="jc-eyebrow">CLOSED LOOP</p><h2 className="jc-section-title">Past applications</h2></div>
+              <span className="text-xs font-bold text-[#789087]">{closed.length} closed</span>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {closed.map((item: any) => <ApplicationCard key={item.id} item={item} compact />)}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </WorkspaceShell>
+  );
+}
+
+function BoardColumn({ title, note, items }: { title: string; note: string; items: any[] }) {
+  return (
+    <div className="jc-board-column">
+      <div className="jc-board-title"><b>{title}</b><span className="jc-board-count">{items.length}</span></div>
+      <p className="jc-board-note">{note}</p>
+      {items.length ? items.map((item) => <ApplicationCard key={item.id} item={item} />) : <div className="mt-6 flex min-h-[190px] items-center justify-center rounded-[18px] border border-dashed border-[#d4cec2] text-center text-xs text-[#789087]">Nothing here yet</div>}
+    </div>
+  );
+}
+
+function ApplicationCard({ item, compact = false }: { item: any; compact?: boolean }) {
+  const job = item.jobs;
+  return (
+    <article className={`jc-application-card ${compact ? "mt-0" : ""}`}>
+      <div className="jc-application-company">
+        <span className="jc-company-dot">{companyInitials(job?.company || "JC")}</span>
+        <span className="min-w-0">
+          <Link href={job?.id ? `/jobs/${job.id}` : "/jobs"}><b>{job?.title || "Job"}</b></Link>
+          <span>{job?.company || "JobCraft"} · {job?.location || "India"}</span>
+        </span>
+      </div>
+      <div className="jc-application-actions">
+        <form action={updateApplicationStatus}>
+          <input type="hidden" name="id" value={item.id} />
+          <select name="status" defaultValue={item.status} aria-label="Application status">
+            {statuses.map((status) => <option key={status}>{status}</option>)}
+          </select>
+          <div className="jc-application-buttons mt-2">
+            <button className="jc-mini-button">Update</button>
+          </div>
+        </form>
+        <div className="flex items-center justify-between gap-3 text-[10px] text-[#789087]">
+          <span>{item.status === "Interview" ? "◷ Prepare talking points" : item.status === "Saved" ? "◷ Tailor resume" : `Updated ${new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}</span>
+          <form action={deleteApplication}><input type="hidden" name="id" value={item.id} /><button className="font-bold text-[#8b6d67]">Remove</button></form>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function PublicApplicationsPreview() {
-  const preview = [["Saved","12","Roles to review"],["Applied","8","Applications sent"],["Interview","3","In progress"],["Offer","1","Successful outcome"]];
-  return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-    <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><div className="flex items-center gap-2"><Link href="/applications?auth=login" scroll={false} className="hidden px-4 py-2.5 text-sm font-bold sm:block">Log in</Link><Link href="/applications?auth=signup" scroll={false} className="rounded-xl bg-[#090d1f] px-5 py-3 text-sm font-bold text-white">Get started</Link></div></div></header>
-    <section className="relative overflow-hidden bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(124,58,237,.12),transparent_30%),radial-gradient(circle_at_90%_10%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1200px] gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:py-18"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">APPLICATION TRACKER</p><h1 className="mt-3 text-5xl font-black tracking-[-.055em]">See your whole job search in one place.</h1><p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">Keep saved roles, applications, interviews and offers organised so the next action is always visible.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/applications?auth=signup" scroll={false} className="rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-200">Start tracking free →</Link><Link href="/jobs" className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-black">Explore jobs</Link></div></div><div className="space-y-4"><PremiumPageVisual variant="applications" /><div className="grid grid-cols-4 gap-2">{preview.map(([label,value,note])=><div key={label} className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm"><p className="text-2xl font-black">{value}</p><p className="mt-1 text-[9px] font-black text-slate-400">{label.toUpperCase()}</p><p className="mt-2 hidden text-[10px] text-slate-500 sm:block">{note}</p></div>)}</div></div></div></section>
-  </main>;
+  const demo = [
+    { title: "Saved", note: "Worth a closer look", item: ["DA", "Data Analyst", "Analytics Co. · Bengaluru"] },
+    { title: "Applied", note: "You made the move", item: ["BA", "Business Analyst", "Fintech Co. · Gurugram"] },
+    { title: "Interview", note: "Conversations in motion", item: ["BI", "Power BI Developer", "Product Co. · Hyderabad"] },
+    { title: "Offer", note: "A good problem to have", item: null },
+  ];
+  return (
+    <WorkspaceShell active="applications" authenticated={false} name="Your profile" headline="Candidate" strength={0}>
+      <div className="jc-content-wrap">
+        <section className="jc-discover-head">
+          <div><p className="jc-eyebrow">YOUR SEARCH, IN MOTION</p><h1 className="jc-page-title">Application plan</h1><p className="jc-page-copy">Save roles, track progress, prepare for conversations and keep the next action visible.</p></div>
+          <Link href="/applications?auth=signup" scroll={false} className="jc-button-primary">Start your plan →</Link>
+        </section>
+        <div className="jc-pipeline-pills"><span className="jc-pipeline-pill is-active">All · 3</span><span className="jc-pipeline-pill">Saved · 1</span><span className="jc-pipeline-pill">Applied · 1</span><span className="jc-pipeline-pill">Interview · 1</span><span className="jc-pipeline-pill">Offer · 0</span></div>
+        <section className="jc-board">
+          {demo.map((column) => <div key={column.title} className="jc-board-column"><div className="jc-board-title"><b>{column.title}</b><span className="jc-board-count">{column.item ? 1 : 0}</span></div><p className="jc-board-note">{column.note}</p>{column.item ? <div className="jc-application-card"><div className="jc-application-company"><span className="jc-company-dot">{column.item[0]}</span><span><b>{column.item[1]}</b><span>{column.item[2]}</span></span></div><div className="jc-application-actions"><span className="text-[10px] text-[#789087]">Create an account to manage this stage.</span></div></div> : <div className="mt-6 flex min-h-[190px] items-center justify-center rounded-[18px] border border-dashed border-[#d4cec2] text-xs text-[#789087]">Nothing here yet</div>}</div>)}
+        </section>
+      </div>
+    </WorkspaceShell>
+  );
+}
+
+function companyInitials(company: string) {
+  return String(company || "JC").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "JC";
 }
