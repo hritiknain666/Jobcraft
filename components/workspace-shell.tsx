@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 
-type ActiveKey = "workspace" | "jobs" | "applications" | "profile" | "resume" | "certificates" | "cover-letter" | "career-assistant";
+type ActiveKey = "workspace" | "jobs" | "applications" | "profile" | "resume" | "resume-builder" | "resume-tailor" | "certificates" | "cover-letter" | "career-assistant";
 
 type WorkspaceShellProps = {
   active: ActiveKey;
@@ -21,13 +21,15 @@ const primaryNav = [
 
 const toolNav = [
   ["resume", "Resume studio", "/resume", "document"],
+  ["resume-builder", "Resume builder", "/resume/builder", "pencil"],
+  ["resume-tailor", "Resume tailoring", "/resume/tailor", "wand"],
   ["certificates", "Certificates", "/certificates", "award"],
   ["cover-letter", "Cover letters", "/cover-letter", "mail"],
   ["career-assistant", "Career assistant", "/career-assistant", "spark"],
 ] as const;
 
 export default function WorkspaceShell({ active, name, headline, strength = 0, authenticated = true, children }: WorkspaceShellProps) {
-  const displayName = name?.trim() || (authenticated ? "Your profile" : "Guest candidate");
+  const displayName = name?.trim() || (authenticated ? "Your profile" : "Your profile");
   const initials = displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -35,12 +37,11 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
     .map((part) => part[0]?.toUpperCase())
     .join("") || "JC";
   const safeStrength = Math.max(0, Math.min(100, Math.round(strength)));
-  const profileHref = authenticated ? "/profile" : "/profile?auth=signup";
 
   return (
     <div className="jc-app-shell">
       <aside className="jc-sidebar">
-        <Link href={authenticated ? "/dashboard" : "/"} className="jc-brand" aria-label="JobCraft workspace">
+        <Link href="/dashboard" className="jc-brand" aria-label="JobCraft workspace">
           <span className="jc-brand-mark" aria-hidden="true"><NavIcon name="spark" /></span>
           <span className="jc-brand-name">JobCraft</span>
         </Link>
@@ -49,7 +50,7 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
           <p className="jc-nav-label">YOUR COMMAND CENTER</p>
           <nav className="jc-nav-list" aria-label="Workspace navigation">
             {primaryNav.map(([key, label, href, icon]) => (
-              <NavLink key={key} active={active === key} href={key === "workspace" && !authenticated ? "/?auth=signup" : href} label={label} icon={icon} />
+              <NavLink key={key} active={active === key} href={href} label={label} icon={icon} />
             ))}
           </nav>
         </div>
@@ -64,24 +65,24 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
         </div>
 
         <div className="jc-sidebar-bottom">
-          <Link href={profileHref} className="jc-signal-card" scroll={authenticated ? undefined : false}>
+          <Link href="/profile" className="jc-signal-card">
             <div className="jc-signal-head"><span>PROFILE SIGNAL</span><b>{safeStrength}%</b></div>
             <div className="jc-signal-track"><span style={{ width: `${safeStrength}%` }} /></div>
             <p>{safeStrength >= 85 ? "Your signal is strong" : "Make your signal stronger"} <span>→</span></p>
           </Link>
 
           <div className="jc-user-row">
-            <Link href={profileHref} scroll={authenticated ? undefined : false} className="jc-avatar">{initials}</Link>
-            <Link href={profileHref} scroll={authenticated ? undefined : false} className="jc-user-copy">
-              <b>{displayName}</b>
-              <span>{headline?.trim() || (authenticated ? "JobCraft candidate" : "Build your career signal")}</span>
+            <Link href="/profile" className="jc-avatar">{initials}</Link>
+            <Link href="/profile" className="jc-user-copy">
+              <b>{authenticated ? displayName : "Log in or join"}</b>
+              <span>{headline?.trim() || (authenticated ? "JobCraft candidate" : "Activate your career workspace")}</span>
             </Link>
             {authenticated ? (
               <form action={logout}>
                 <button className="jc-logout-button" aria-label="Log out" title="Log out"><NavIcon name="sliders" /></button>
               </form>
             ) : (
-              <Link href="/?auth=login" scroll={false} className="jc-logout-button" aria-label="Log in" title="Log in"><NavIcon name="sliders" /></Link>
+              <Link href="/dashboard?auth=login" scroll={false} className="jc-logout-button" aria-label="Log in" title="Log in"><NavIcon name="sliders" /></Link>
             )}
           </div>
         </div>
@@ -91,9 +92,10 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
         <header className="jc-topbar">
           <div className="jc-intention"><span /> Search with intention.</div>
           <div className="jc-top-actions">
-            <Link href={authenticated ? "/applications" : "/applications?auth=signup"} scroll={authenticated ? undefined : false} className="jc-bell" aria-label="Applications"><NavIcon name="bell" /><span /></Link>
+            {!authenticated ? <Link href="/dashboard?auth=login" scroll={false} className="jc-text-link">Log in</Link> : null}
+            <Link href="/applications" className="jc-bell" aria-label="Applications"><NavIcon name="bell" /><span /></Link>
             <div className="jc-top-divider" />
-            <Link href={profileHref} scroll={authenticated ? undefined : false} className="jc-top-avatar">{initials}</Link>
+            <Link href="/profile" className="jc-top-avatar">{initials}</Link>
           </div>
         </header>
         <main className="jc-workspace-content">{children}</main>
@@ -119,6 +121,8 @@ function NavIcon({ name }: { name: string }) {
   if (name === "briefcase") return <svg {...common}><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5.7C8 4.8 8.8 4 9.7 4h4.6c.9 0 1.7.8 1.7 1.7V7M3 11.5c5.7 2.2 12.3 2.2 18 0"/></svg>;
   if (name === "user") return <svg {...common}><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/><circle cx="12" cy="12" r="9"/></svg>;
   if (name === "document") return <svg {...common}><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>;
+  if (name === "pencil") return <svg {...common}><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 8.5 3 3"/></svg>;
+  if (name === "wand") return <svg {...common}><path d="m4 20 11-11M13 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3ZM18 14l.7 2.1L21 17l-2.3.8L18 20l-.8-2.2L15 17l2.2-.9L18 14Z"/></svg>;
   if (name === "award") return <svg {...common}><circle cx="12" cy="9" r="5"/><path d="m9 13-2 8 5-3 5 3-2-8"/></svg>;
   if (name === "mail") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>;
   if (name === "bell") return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>;
