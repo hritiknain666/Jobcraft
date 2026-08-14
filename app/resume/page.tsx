@@ -1,34 +1,90 @@
 import Link from "next/link";
+import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { deleteResume, setPrimaryResume, uploadResume } from "./actions";
-import PremiumPageVisual from "@/components/premium-page-visual";
 
 export default async function ResumePage({ searchParams }: { searchParams: Promise<{ error?: string; uploaded?: string }> }) {
   const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-      <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><div className="flex items-center gap-2"><Link href="/resume?auth=login" scroll={false} className="hidden px-4 py-2.5 text-sm font-bold sm:block">Log in</Link><Link href="/resume?auth=signup" scroll={false} className="rounded-xl bg-[#090d1f] px-5 py-3 text-sm font-bold text-white">Get started</Link></div></div></header>
-      <section className="relative overflow-hidden bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(124,58,237,.12),transparent_30%),radial-gradient(circle_at_90%_15%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1200px] gap-9 px-5 py-14 sm:px-8 lg:grid-cols-[.92fr_1.08fr] lg:items-center lg:py-18"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">JOBCRAFT RESUME WORKSPACE</p><h1 className="mt-3 text-5xl font-black tracking-[-.055em]">Build, store and tailor resumes without losing control.</h1><p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">Create ATS-friendly versions, upload existing resumes, keep a primary version and reuse saved certificates across applications.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/resume?auth=signup" scroll={false} className="rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-200">Start building free →</Link><Link href="/jobs" className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-black">Explore jobs</Link></div><p className="mt-4 text-sm text-slate-500">Preview the workflow first. An account is only needed when you save or edit your own resume.</p></div><div className="space-y-4"><PremiumPageVisual variant="resume" /><div className="jc-glass rounded-[24px] p-5"><div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-black tracking-[.14em] text-violet-600">ATS PREVIEW</p><h2 className="mt-4 text-3xl font-black">Your Name</h2><p className="mt-1 font-semibold text-slate-500">Data Analyst | SQL | Power BI</p><div className="mt-5 border-t border-slate-100 pt-4"><p className="text-xs font-black">SKILLS</p><div className="mt-3 flex flex-wrap gap-2">{["SQL","Power BI","Excel","Python"].map(skill=><span key={skill} className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600">{skill}</span>)}</div></div></div></div></div></div></section>
-      <section className="mx-auto max-w-[1200px] px-5 py-14 sm:px-8"><div className="grid gap-4 md:grid-cols-3">{[["Build clean versions","Create structured ATS-friendly resumes inside JobCraft."],["Keep documents private","Uploaded resume files stay in your private workspace."],["Reuse certificates","Save credentials once and include relevant ones in each version."]].map(([title,text],i)=><div key={title} className="group rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-violet-200"><span className="text-xs font-black text-violet-600">0{i+1}</span><h2 className="mt-5 text-xl font-black">{title}</h2><p className="mt-2 leading-7 text-slate-600">{text}</p></div>)}</div></section>
-    </main>;
-  }
+  if (!user) return <PublicResumePreview />;
 
-  const { data: resumes } = await supabase.from("resumes").select("id,name,is_primary,storage_path,created_at,structured_data").eq("user_id", user.id).order("is_primary", { ascending: false }).order("created_at", { ascending: false });
+  const [{ data: resumes }, { data: profile }, { count: certificateCount }] = await Promise.all([
+    supabase.from("resumes").select("id,name,is_primary,storage_path,created_at,structured_data").eq("user_id", user.id).order("is_primary", { ascending: false }).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("full_name,headline,city,experience_years,skills,target_roles,preferred_work_modes").eq("id", user.id).maybeSingle(),
+    supabase.from("certificates").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+  ]);
+
   const builtCount = resumes?.filter((resume: any) => !resume.storage_path).length ?? 0;
   const uploadedCount = resumes?.filter((resume: any) => Boolean(resume.storage_path)).length ?? 0;
-  const primary = resumes?.find((resume: any) => resume.is_primary);
+  const primary = resumes?.find((resume: any) => resume.is_primary) ?? resumes?.[0] ?? null;
+  const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
-  return <main className="min-h-screen bg-[#f5f6fb] text-[#090d1f]">
-    <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/" className="flex items-center gap-3 font-black"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#090d1f] text-sm text-white">JC</span><span className="text-xl">Job<span className="text-violet-600">Craft</span></span></Link><Link href="/dashboard" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">← Dashboard</Link></div></header>
-    <section className="relative overflow-hidden border-b border-slate-200/70 bg-white"><div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(124,58,237,.10),transparent_30%),radial-gradient(circle_at_90%_15%,rgba(14,165,233,.08),transparent_28%)]"/><div className="relative mx-auto grid max-w-[1200px] gap-7 px-5 py-9 sm:px-8 lg:grid-cols-[1.04fr_.96fr] lg:items-center"><div><p className="text-xs font-black tracking-[.16em] text-violet-600">RESUME WORKSPACE</p><h1 className="mt-2 text-4xl font-black tracking-[-.05em] sm:text-5xl">Keep every version organised.</h1><p className="mt-3 max-w-2xl text-lg leading-8 text-slate-600">Build, upload and manage factual ATS-friendly resume versions without losing track of which one belongs to which direction.</p><div className="mt-6 flex flex-wrap gap-3"><Link href="/resume/builder" className="rounded-xl bg-violet-600 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-200">Build a resume →</Link><Link href="/certificates" className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-black">Certificates</Link></div></div><PremiumPageVisual variant="resume" compact /></div></section>
+  return (
+    <WorkspaceShell active="resume" name={profile?.full_name} headline={profile?.headline} strength={strength}>
+      <div className="jc-content-wrap">
+        <section className="jc-tool-hero">
+          <div><p className="jc-eyebrow">READY WHEN YOU ARE</p><h1 className="jc-page-title">Resume studio</h1><p className="jc-page-copy">Build factual ATS-friendly versions, keep uploaded files private, and tailor from a clean source resume.</p></div>
+          <div className="flex flex-wrap gap-2"><Link href="/resume/builder" className="jc-button-primary">Build a resume →</Link><Link href="/certificates" className="jc-button-secondary">Certificates · {certificateCount ?? 0}</Link></div>
+        </section>
 
-    <section className="mx-auto max-w-[1200px] px-5 py-8 sm:px-8 lg:py-10">
-      {params.error&&<p className="rounded-xl bg-red-50 p-4 text-red-700">{params.error}</p>}{params.uploaded&&<p className="rounded-xl bg-emerald-50 p-4 text-emerald-800">Resume uploaded successfully.</p>}
-      <div className="grid gap-4 sm:grid-cols-3">{[["Total resumes",resumes?.length??0],["Built in JobCraft",builtCount],["Uploaded files",uploadedCount]].map(([label,value])=><div key={String(label)} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-violet-200"><p className="text-sm font-bold text-slate-500">{String(label)}</p><p className="mt-2 text-3xl font-black">{String(value)}</p></div>)}</div>
-      <div className="mt-8 grid gap-6 lg:grid-cols-[.72fr_1.28fr]"><aside className="space-y-5"><section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-black tracking-[.14em] text-violet-600">PRIMARY RESUME</p>{primary?<><h2 className="mt-3 text-xl font-black">{primary.name}</h2><p className="mt-1 text-sm text-slate-500">{primary.storage_path?"Uploaded file":"Built in JobCraft"}</p><p className="mt-4 text-sm leading-6 text-slate-600">This is the default version JobCraft should use as your starting point.</p></>:<p className="mt-3 text-sm leading-6 text-slate-600">Choose a primary resume once you add your first version.</p>}</section><section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm"><p className="text-sm font-black">Upload an existing resume</p><p className="mt-2 text-sm leading-6 text-slate-500">PDF or DOCX, maximum 5 MB. Files are stored privately.</p><form action={uploadResume} className="mt-5 space-y-3"><input name="name" placeholder="Resume name e.g. Data Analyst" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 outline-none focus:border-violet-400 focus:bg-white"/><input name="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"/><button className="w-full rounded-xl bg-[#090d1f] px-5 py-3.5 font-black text-white transition hover:bg-violet-600">Upload resume</button></form></section></aside><section><p className="text-xs font-black tracking-[.14em] text-violet-600">YOUR VERSIONS</p><h2 className="mt-2 text-2xl font-black">Resumes ready for your search</h2><div className="mt-5 space-y-4">{resumes?.length?resumes.map((resume:any)=><article key={resume.id} className="group rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_20px_55px_rgba(15,23,42,.08)]"><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="text-xl font-black">{resume.name}</h3>{resume.is_primary&&<span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Primary</span>}</div><p className="mt-1 text-sm text-slate-500">{resume.storage_path?"Uploaded resume":"JobCraft resume"} · Added {new Date(resume.created_at).toLocaleDateString("en-IN")}</p></div><div className="flex flex-wrap gap-2">{!resume.storage_path&&<Link href={`/resume/builder?id=${resume.id}`} className="rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700">Edit</Link>}{!resume.is_primary&&<form action={setPrimaryResume}><input type="hidden" name="id" value={resume.id}/><button className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black">Set primary</button></form>}<form action={deleteResume}><input type="hidden" name="id" value={resume.id}/><button className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-black text-red-700">Delete</button></form></div></div></article>):<div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-10 text-center"><h3 className="text-xl font-black">Create your first resume</h3><p className="mt-2 text-slate-600">Build an ATS-friendly version or upload an existing file.</p><Link href="/resume/builder" className="mt-5 inline-block rounded-xl bg-violet-600 px-5 py-3 font-black text-white">Start building →</Link></div>}</div></section></div>
-    </section>
-  </main>;
+        {params.error ? <p className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">{params.error}</p> : null}
+        {params.uploaded ? <p className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">Resume uploaded successfully.</p> : null}
+
+        <section className="jc-stats-grid">
+          <Stat label="Total resumes" value={resumes?.length ?? 0} note="versions in your workspace" />
+          <Stat label="Built here" value={builtCount} note="structured JobCraft resumes" />
+          <Stat label="Uploaded" value={uploadedCount} note="private PDF/DOCX files" />
+          <Stat label="Primary" value={primary ? 1 : 0} note={primary ? primary.name : "choose your default"} />
+        </section>
+
+        <section className="jc-tool-grid">
+          <aside className="space-y-5">
+            <article className="jc-dark-card jc-tool-panel">
+              <p className="jc-eyebrow !text-[#f49a48]">PRIMARY RESUME</p>
+              {primary ? <><h2 className="jc-section-title !mt-3 !text-white">{primary.name}</h2><p className="mt-2 text-sm leading-6 text-[#9eb4ab]">{primary.storage_path ? "Uploaded file" : "Built in JobCraft"} · default starting point for tailoring.</p><Link href={primary.storage_path ? "/resume" : `/resume/builder?id=${primary.id}`} className="mt-5 inline-flex text-sm font-extrabold text-[#f49a48] no-underline">{primary.storage_path ? "Manage version" : "Edit primary"} ↗</Link></> : <><h2 className="jc-section-title !mt-3 !text-white">No primary yet</h2><p className="mt-2 text-sm leading-6 text-[#9eb4ab]">Create or upload a resume, then choose the version JobCraft should use first.</p></>}
+            </article>
+
+            <article className="jc-card jc-tool-panel">
+              <p className="jc-eyebrow">BRING YOUR OWN</p>
+              <h2 className="jc-section-title">Upload a resume</h2>
+              <p className="jc-section-subtitle">PDF or DOCX, maximum 5 MB. Files stay in your private Supabase storage.</p>
+              <form action={uploadResume} className="mt-5 grid gap-3">
+                <input name="name" placeholder="Resume name e.g. Data Analyst" className="jc-input" />
+                <input name="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required className="jc-input text-xs" />
+                <button className="jc-button-primary">Upload resume →</button>
+              </form>
+            </article>
+          </aside>
+
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="jc-eyebrow">YOUR VERSIONS</p><h2 className="jc-section-title">Resumes ready for your search</h2></div><Link href="/resume/builder" className="jc-text-link">Create new ↗</Link></div>
+            <div className="jc-tool-list">
+              {resumes?.length ? resumes.map((resume: any) => (
+                <article key={resume.id} className="jc-tool-list-item">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-4"><span className="jc-file-icon">▤</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="m-0 truncate text-base font-extrabold text-[#173f33]">{resume.name}</h3>{resume.is_primary ? <span className="jc-ready-pill">Primary</span> : null}</div><p className="mt-1 text-xs text-[#789087]">{resume.storage_path ? "Uploaded resume" : "JobCraft resume"} · {new Date(resume.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div>
+                    <div className="flex flex-wrap gap-2">
+                      {!resume.storage_path ? <Link href={`/resume/builder?id=${resume.id}`} className="jc-button-secondary !px-3 !py-2 text-xs">Edit</Link> : null}
+                      {!resume.is_primary ? <form action={setPrimaryResume}><input type="hidden" name="id" value={resume.id} /><button className="jc-button-secondary !px-3 !py-2 text-xs">Set primary</button></form> : null}
+                      <form action={deleteResume}><input type="hidden" name="id" value={resume.id} /><button className="jc-button-secondary !border-red-200 !px-3 !py-2 text-xs !text-red-700">Delete</button></form>
+                    </div>
+                  </div>
+                </article>
+              )) : <div className="jc-card p-10 text-center"><h3 className="jc-section-title">Create your first resume</h3><p className="jc-section-subtitle">Build an ATS-friendly version or upload an existing file.</p><Link href="/resume/builder" className="jc-button-primary mt-5">Start building →</Link></div>}
+            </div>
+          </section>
+        </section>
+      </div>
+    </WorkspaceShell>
+  );
+}
+
+function PublicResumePreview() {
+  return <WorkspaceShell active="resume" authenticated={false} name="Your profile" headline="Candidate" strength={0}><div className="jc-content-wrap"><section className="jc-tool-hero"><div><p className="jc-eyebrow">READY WHEN YOU ARE</p><h1 className="jc-page-title">Resume studio</h1><p className="jc-page-copy">Build ATS-friendly versions, upload existing resumes and keep certificates connected to your career workspace.</p></div><Link href="/resume?auth=signup" scroll={false} className="jc-button-primary">Start building →</Link></section><section className="jc-profile-layout"><article className="jc-dark-card jc-profile-identity"><p className="jc-eyebrow !text-[#f49a48]">ATS-READY FOUNDATION</p><h2 className="jc-section-title !mt-4 !text-white">A clean source resume</h2><p className="mt-3 text-sm leading-7 text-[#a4b9b1]">JobCraft keeps structured content factual and reusable instead of inventing experience or achievements.</p><div className="mt-8 flex flex-wrap gap-2">{["SQL", "Power BI", "Excel", "Python"].map((skill) => <span key={skill} className="rounded-full bg-white/10 px-3 py-2 text-xs text-white">{skill}</span>)}</div></article><article className="jc-card jc-toolkit-card"><p className="jc-eyebrow">YOUR WORKFLOW</p><h2 className="jc-section-title">Build · upload · tailor</h2><div className="jc-tool-list">{["Create a structured resume", "Keep private uploaded versions", "Attach relevant certificates", "Tailor against a real job"].map((item) => <div key={item} className="jc-tool-list-item text-sm font-bold">✓ {item}</div>)}</div></article></section></div></WorkspaceShell>;
+}
+
+function Stat({ label, value, note }: { label: string; value: number; note: string }) {
+  return <div className="jc-card jc-stat-card"><div className="jc-stat-top"><span>{label}</span><span className="jc-stat-icon">▤</span></div><div className="jc-stat-value">{value}</div><div className="jc-stat-note truncate">{note}</div></div>;
 }
