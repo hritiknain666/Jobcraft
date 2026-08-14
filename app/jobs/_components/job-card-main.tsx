@@ -3,6 +3,8 @@ function initials(company: string) {
 }
 
 export function JobCardMain({ job, match }: { job: any; match: any }) {
+  const isSample = job.source === "JobCraft";
+
   return (
     <div className="p-5 sm:p-6">
       <div className="flex gap-4">
@@ -10,7 +12,9 @@ export function JobCardMain({ job, match }: { job: any; match: any }) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-black text-violet-600">{job.company}</p>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">SAMPLE ROLE</span>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${isSample ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+              {isSample ? "SAMPLE ROLE" : `LIVE · ${job.source ?? "SOURCE"}`}
+            </span>
           </div>
           <h3 className="mt-1 text-2xl font-black">{job.title}</h3>
           <p className="mt-2 text-sm text-slate-500">{job.location} · {job.work_mode} · {job.salary_min_lpa ? `₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA` : "Salary not listed"}</p>
