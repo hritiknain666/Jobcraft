@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch, getJobMatchLabel, getMatchConfidenceLabel } from "@/lib/job-match";
 import { createTailoredResume } from "@/app/resume/tailor/actions";
 import { saveApplication } from "@/app/applications/actions";
 import { createCoverLetter } from "@/app/cover-letter/actions";
-
-function initials(company: string) {
-  return company.split(" ").filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
-}
 
 export default async function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,7 +19,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
   let application: any = null;
   if (user) {
     const [profileResult, resumeResult, appResult] = await Promise.all([
-      supabase.from("profiles").select("skills,experience_years,city,preferred_work_modes,target_roles").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("full_name,headline,skills,experience_years,city,preferred_work_modes,target_roles").eq("id", user.id).maybeSingle(),
       supabase.from("resumes").select("id,name,is_primary").eq("user_id", user.id).order("is_primary", { ascending: false }),
       supabase.from("applications").select("id,status").eq("user_id", user.id).eq("job_id", id).maybeSingle(),
     ]);
@@ -43,50 +40,64 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
     targetRoles: profile?.target_roles ?? [],
     jobTitle: job.title,
   });
-  const matchLabel = getJobMatchLabel(match.score, match.confidence);
-  const confidenceLabel = getMatchConfidenceLabel(match.confidence);
+
   const source = String(job.source ?? "").trim();
   const isSample = source === "JobCraft";
   const isAdzuna = source.toLowerCase() === "adzuna";
   const sourceLabel = source || "External provider";
-  const applyLabel = isSample ? "Open listing ↗" : `View / apply via ${sourceLabel} ↗`;
-  const workModeLabel = job.work_mode || "Work mode not listed";
-  const experienceLabel = job.experience_min !== null && job.experience_min !== undefined
-    ? `${job.experience_min}–${job.experience_max ?? "+"} yrs`
-    : "Experience not listed";
+  const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
+  const experienceLabel = job.experience_min !== null && job.experience_min !== undefined ? `${job.experience_min}${job.experience_max !== null && job.experience_max !== undefined ? `–${job.experience_max}` : "+"} yrs` : "Experience not listed";
 
-  return <main className="min-h-screen bg-[#f6f7fb] text-[#0b1020]">
-    <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl"><div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-4 sm:px-8"><Link href="/jobs" className="text-sm font-black text-violet-600">← Back to jobs</Link><Link href="/" className="flex items-center gap-2 font-black"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0b1020] text-xs text-white">JC</span><span>Job<span className="text-violet-600">Craft</span></span></Link>{user?<Link href="/dashboard" className="text-sm font-black text-slate-500">Dashboard</Link>:<Link href={`/jobs/${job.id}?auth=login`} scroll={false} className="text-sm font-black text-slate-500">Log in</Link>}</div></header>
+  return (
+    <WorkspaceShell active="jobs" authenticated={Boolean(user)} name={profile?.full_name} headline={profile?.headline} strength={strength}>
+      <div className="jc-content-wrap">
+        <div className="mb-5"><Link href="/jobs" className="jc-text-link">← Back to discover roles</Link></div>
 
-    <div className="mx-auto max-w-[1240px] px-5 py-8 sm:px-8">
-      <section className="relative overflow-hidden rounded-[34px] border border-violet-100 bg-[linear-gradient(135deg,#ffffff_0%,#f8f4ff_56%,#edf9ff_100%)] p-6 shadow-[0_30px_90px_rgba(79,70,229,.10)] sm:p-8 lg:p-10">
-        <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-violet-300/25 blur-3xl"/>
-        <div className="relative grid gap-7 lg:grid-cols-[1fr_260px] lg:items-start">
-          <div><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0b1020] text-sm font-black text-white shadow-lg">{initials(job.company)}</span><div><div className="flex flex-wrap items-center gap-2"><p className="font-black text-violet-600">{job.company}</p><span className={`rounded-full px-3 py-1 text-[10px] font-black ${isSample?"bg-amber-50 text-amber-700":"bg-emerald-50 text-emerald-700"}`}>{isSample?"SAMPLE ROLE":`LIVE · ${sourceLabel}`}</span>{isAdzuna&&<a href="https://www.adzuna.in/" target="_blank" rel="noreferrer" className="text-[11px] font-black text-slate-500 underline decoration-slate-300 underline-offset-2">Jobs by Adzuna ↗</a>}</div><p className="mt-1 text-sm text-slate-500">{isSample?"JobCraft sample listing":`Listing supplied by ${sourceLabel}`}</p></div></div><h1 className="mt-6 max-w-4xl text-4xl font-black tracking-[-.055em] sm:text-5xl lg:text-6xl">{job.title}</h1><div className="mt-5 flex flex-wrap gap-2 text-sm font-bold text-slate-600"><span className="rounded-full bg-white px-3 py-2 shadow-sm">{job.location}</span><span className="rounded-full bg-white px-3 py-2 shadow-sm">{workModeLabel}</span><span className="rounded-full bg-white px-3 py-2 shadow-sm">{job.salary_min_lpa ? `₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA` : "Salary not listed"}</span><span className="rounded-full bg-white px-3 py-2 shadow-sm">{experienceLabel}</span></div></div>
-          {user?<div className="rounded-[26px] border border-emerald-100 bg-white/90 p-5 shadow-sm"><div className="flex items-end justify-between"><div><p className="text-[10px] font-black tracking-[.14em] text-emerald-700">YOUR MATCH</p><p className="mt-1 font-black">{matchLabel}</p></div><span className="text-4xl font-black text-emerald-600">{match.score}%</span></div><div className="mt-4 h-2.5 rounded-full bg-emerald-100"><div className="h-2.5 rounded-full bg-emerald-500" style={{width:`${match.score}%`}}/></div><p className="mt-3 text-xs font-black uppercase tracking-[.08em] text-slate-400">{confidenceLabel} · {Math.round(match.evidenceCoverage * 100)}% evidence coverage</p><p className="mt-2 text-xs leading-5 text-slate-500">Calculated only from job data that is actually known plus the profile signals you saved.</p></div>:<div className="rounded-[26px] border border-violet-100 bg-white/90 p-5 shadow-sm"><p className="text-[10px] font-black tracking-[.14em] text-violet-600">UNLOCK YOUR MATCH</p><p className="mt-2 font-black">See why this role fits.</p><p className="mt-2 text-sm leading-6 text-slate-500">Compare your profile with this job before you apply.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="mt-4 block rounded-xl bg-violet-600 px-4 py-3 text-center text-sm font-black text-white">Create profile →</Link></div>}
-        </div>
-      </section>
+        <section className="jc-card p-7 sm:p-9">
+          <div className="grid gap-8 xl:grid-cols-[1fr_300px] xl:items-start">
+            <div>
+              <div className="flex flex-wrap items-center gap-4"><span className="jc-company-square">{companyInitials(job.company)}</span><div><div className="flex flex-wrap items-center gap-2"><p className="jc-eyebrow !text-[10px]">{job.company}</p><span className={`rounded-full px-3 py-1 text-[9px] font-black ${isSample ? "bg-[#f7e0c7] text-[#795939]" : "bg-[#e4f0e9] text-[#278363]"}`}>{isSample ? "SAMPLE ROLE" : `LIVE · ${sourceLabel}`}</span></div><p className="mt-2 text-xs text-[#789087]">{isSample ? "JobCraft prototype listing" : `Listing supplied by ${sourceLabel}`}</p></div></div>
+              <h1 className="jc-page-title mt-7 !text-[clamp(2.7rem,5vw,4.8rem)]">{job.title}</h1>
+              <div className="mt-6 flex flex-wrap gap-2"><span className="jc-chip">⌖ {job.location || "India"}</span><span className="jc-chip">{job.work_mode || "Work mode not listed"}</span><span className="jc-chip">{salaryText(job.salary_min_lpa, job.salary_max_lpa)}</span><span className="jc-chip">{experienceLabel}</span></div>
+            </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_330px]">
-        <div className="space-y-6">
-          {user&&<section className="grid gap-4 sm:grid-cols-2"><div className="rounded-[26px] border border-emerald-100 bg-emerald-50 p-5"><p className="text-xs font-black tracking-[.13em] text-emerald-700">WHAT ALREADY FITS</p><div className="mt-4 space-y-2">{match.strengths.length?match.strengths.slice(0,4).map((item)=><div key={item} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-emerald-900">✓ {item}</div>):<p className="text-sm leading-6 text-emerald-900">Not enough known job/profile signals yet. Complete your profile and review the provider description.</p>}</div></div><div className="rounded-[26px] border border-amber-100 bg-amber-50 p-5"><p className="text-xs font-black tracking-[.13em] text-amber-700">CHECK BEFORE APPLYING</p><div className="mt-4 space-y-2">{match.improvements.length?match.improvements.slice(0,4).map((item)=><div key={item} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-amber-900">• {item}</div>):<p className="text-sm leading-6 text-amber-900">No major gaps are visible in the job data currently available.</p>}</div></div></section>}
+            {user ? <article className="rounded-[20px] bg-[#efede7] p-5"><div className="flex items-end justify-between gap-4"><div><p className="jc-eyebrow !text-[9px]">YOUR MATCH</p><b className="mt-2 block text-sm">{getJobMatchLabel(match.score, match.confidence)}</b></div><span className="jc-serif text-4xl text-[#278363]">{match.score}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#d9ded8]"><div className="h-full rounded-full bg-[#278363]" style={{ width: `${match.score}%` }} /></div><p className="mt-3 text-[10px] font-bold uppercase tracking-[.08em] text-[#789087]">{getMatchConfidenceLabel(match.confidence)} · {Math.round(match.evidenceCoverage * 100)}% evidence</p><p className="mt-2 text-[11px] leading-5 text-[#789087]">Only known job fields and your saved profile contribute to this score.</p></article> : <article className="rounded-[20px] bg-[#efede7] p-5"><p className="jc-eyebrow !text-[9px]">UNLOCK YOUR FIT</p><h2 className="jc-section-title !mt-3 !text-[21px]">See matched skills and gaps.</h2><p className="jc-section-subtitle">Build your career signal before deciding whether a role is worth your time.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="jc-button-primary mt-4 w-full">Create profile →</Link></article>}
+          </div>
+        </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><p className="text-xs font-black tracking-[.14em] text-slate-400">ABOUT THE ROLE</p><p className="mt-4 whitespace-pre-wrap leading-8 text-slate-600">{job.description}</p></section>
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_330px]">
+          <div className="space-y-6">
+            {user ? <div className="grid gap-4 md:grid-cols-2"><article className="jc-card p-5"><p className="jc-eyebrow">WHAT ALREADY FITS</p><div className="mt-4 grid gap-2">{match.strengths.length ? match.strengths.slice(0, 4).map((item) => <div key={item} className="rounded-[13px] bg-[#e9f4ed] px-3 py-3 text-xs font-bold leading-5 text-[#285844]">✓ {item}</div>) : <p className="text-xs leading-6 text-[#789087]">Not enough known profile/job signals yet.</p>}</div></article><article className="jc-card p-5"><p className="jc-eyebrow !text-[#c77a34]">CHECK BEFORE APPLYING</p><div className="mt-4 grid gap-2">{match.improvements.length ? match.improvements.slice(0, 4).map((item) => <div key={item} className="rounded-[13px] bg-[#f8ead9] px-3 py-3 text-xs font-bold leading-5 text-[#76573b]">• {item}</div>) : <p className="text-xs leading-6 text-[#789087]">No major gaps are visible in the structured data currently available.</p>}</div></article></div> : null}
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-black tracking-[.14em] text-slate-400">CORE SKILLS</p><h2 className="mt-2 text-2xl font-black">What the role asks for</h2></div>{user&&job.skills?.length>0&&<span className="text-sm font-black text-emerald-600">{match.matchedSkills.length} matched</span>}</div><div className="mt-5 flex flex-wrap gap-2">{(job.skills??[]).map((skill:string)=>{const yes=match.matchedSkills.includes(skill);return <span key={skill} className={`rounded-xl px-3 py-2 text-sm font-black ${user&&yes?"bg-emerald-50 text-emerald-700":"bg-slate-100 text-slate-600"}`}>{skill}{user&&yes?" ✓":""}</span>})}{!job.skills?.length&&<p className="text-sm leading-6 text-slate-500">This provider did not supply a structured skill list. Use the role description above as the source of truth; JobCraft search can still match skill terms found in the title or description.</p>}</div></section>
-        </div>
+            <article className="jc-card p-6 sm:p-8"><p className="jc-eyebrow">ABOUT THE ROLE</p><h2 className="jc-section-title">What the provider says</h2><p className="mt-5 whitespace-pre-wrap text-sm leading-8 text-[#5f786f]">{job.description}</p></article>
 
-        <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          {user?<>
-            <div className="rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-black tracking-[.13em] text-violet-600">NEXT ACTION</p><h2 className="mt-2 text-xl font-black">Move this application forward.</h2><div className="mt-5 space-y-3"><form action={saveApplication}><input type="hidden" name="jobId" value={job.id}/><input type="hidden" name="status" value={application?.status === "Saved" ? "Applied" : application?.status ?? "Saved"}/><button className="w-full rounded-xl bg-[#0b1020] px-5 py-3.5 font-black text-white">{application?`Tracker: ${application.status}`:"Save to tracker"}</button></form><form action={createCoverLetter}><input type="hidden" name="jobId" value={job.id}/><button className="w-full rounded-xl border border-slate-200 bg-white px-5 py-3.5 font-black">Create cover letter</button></form><Link href="/applications" className="block text-center text-sm font-black text-violet-600">Open tracker →</Link></div></div>
-            <div className="rounded-[26px] border border-violet-100 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-5"><p className="text-xs font-black tracking-[.13em] text-violet-600">RESUME FOR THIS ROLE</p><h2 className="mt-2 text-xl font-black">Bring the right evidence forward.</h2><p className="mt-2 text-sm leading-6 text-violet-900">Keep the facts the same. Change only the emphasis.</p>{resumes.length?<form action={createTailoredResume} className="mt-4 space-y-3"><input type="hidden" name="jobId" value={job.id}/><select name="resumeId" className="w-full rounded-xl border border-violet-200 bg-white px-4 py-3">{resumes.map((resume)=><option key={resume.id} value={resume.id}>{resume.name}{resume.is_primary?" (Primary)":""}</option>)}</select><button className="w-full rounded-xl bg-violet-600 px-5 py-3.5 font-black text-white">Create role version</button></form>:<Link href="/resume" className="mt-4 block rounded-xl bg-violet-600 px-5 py-3 text-center font-black text-white">Add a resume first</Link>}</div>
-          </>:<div className="rounded-[26px] border border-violet-100 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-5"><p className="text-xs font-black tracking-[.13em] text-violet-600">SEE YOUR FIT</p><h2 className="mt-2 text-xl font-black">Know before you apply.</h2><p className="mt-2 text-sm leading-6 text-violet-900">Create your profile to see matched skills, gaps and fit signals.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="mt-4 block rounded-xl bg-violet-600 px-5 py-3 text-center font-black text-white">Get started free</Link></div>}
+            <article className="jc-card p-6 sm:p-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="jc-eyebrow">CORE SKILLS</p><h2 className="jc-section-title">What the role asks for</h2></div>{user && job.skills?.length ? <span className="jc-ready-pill">{match.matchedSkills.length} matched</span> : null}</div><div className="mt-5 flex flex-wrap gap-2">{(job.skills ?? []).map((skill: string) => <span key={skill} className={`jc-chip ${user && match.matchedSkills.includes(skill) ? "!bg-[#e3f0e8] !text-[#278363]" : ""}`}>{user && match.matchedSkills.includes(skill) ? "✓ " : ""}{skill}</span>)}{!job.skills?.length ? <p className="text-xs leading-6 text-[#789087]">This provider did not supply a structured skill list. Use the description as the source of truth; JobCraft search can still match skill terms found in the title or description.</p> : null}</div></article>
+          </div>
 
-          {isSample?<div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5"><p className="text-xs font-black tracking-[.13em] text-amber-700">PROTOTYPE NOTICE</p><p className="mt-2 text-sm leading-6 text-amber-900">This is a JobCraft sample listing for testing search and matching. It is not presented as a live employer vacancy.</p></div>:<div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5"><p className="text-xs font-black tracking-[.13em] text-emerald-700">JOB SOURCE</p><p className="mt-2 text-sm leading-6 text-emerald-950">This listing was supplied by {sourceLabel}. Verify the role, availability and application details on the provider page before applying.</p>{isAdzuna&&<a href="https://www.adzuna.in/" target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-black text-emerald-800 underline underline-offset-2">Jobs by Adzuna ↗</a>}</div>}
-        </aside>
+          <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+            {user ? <>
+              <article className="jc-dark-card jc-tool-panel"><p className="jc-eyebrow !text-[#f49a48]">NEXT ACTION</p><h2 className="jc-section-title !text-white">Move this role forward.</h2><div className="mt-5 grid gap-3"><form action={saveApplication}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="status" value={application?.status ?? "Saved"} /><button className="w-full rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-sm font-black text-[#173f33]">{application ? `Tracker · ${application.status}` : "Save to application plan"}</button></form><form action={createCoverLetter}><input type="hidden" name="jobId" value={job.id} /><button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">Create cover letter</button></form><Link href="/applications" className="text-center text-xs font-extrabold text-[#f49a48] no-underline">Open application plan →</Link></div></article>
+
+              <article className="jc-card jc-tool-panel"><p className="jc-eyebrow">RESUME FOR THIS ROLE</p><h2 className="jc-section-title">Bring the right evidence forward.</h2><p className="jc-section-subtitle">Keep the facts the same. Change only the emphasis.</p>{resumes.length ? <form action={createTailoredResume} className="mt-4 grid gap-3"><input type="hidden" name="jobId" value={job.id} /><select name="resumeId" className="jc-input">{resumes.map((resume) => <option key={resume.id} value={resume.id}>{resume.name}{resume.is_primary ? " (Primary)" : ""}</option>)}</select><button className="jc-button-primary">Create role version →</button></form> : <Link href="/resume" className="jc-button-primary mt-4 w-full">Add a resume first →</Link>}</article>
+            </> : <article className="jc-dark-card jc-tool-panel"><p className="jc-eyebrow !text-[#f49a48]">SEE YOUR FIT</p><h2 className="jc-section-title !text-white">Know before you apply.</h2><p className="mt-3 text-sm leading-6 text-[#a4b9b1]">Create your profile to see matched skills, gaps and evidence coverage.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="mt-5 block rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-center text-sm font-black text-[#173f33]">Get started →</Link></article>}
+
+            <article className={`jc-card p-5 ${isSample ? "!bg-[#fbf0df]" : "!bg-[#e9f4ed]"}`}><p className={`jc-eyebrow ${isSample ? "!text-[#b86e2d]" : ""}`}>{isSample ? "PROTOTYPE NOTICE" : "JOB SOURCE"}</p><p className="mt-3 text-xs leading-6 text-[#5f786f]">{isSample ? "This is a JobCraft sample listing for testing search and matching. It is not presented as a live employer vacancy." : `This listing was supplied by ${sourceLabel}. Verify availability and application details on the provider page before applying.`}</p>{isAdzuna ? <a href="https://www.adzuna.in/" target="_blank" rel="noreferrer" className="jc-text-link mt-3 inline-block">Jobs by Adzuna ↗</a> : null}</article>
+          </aside>
+        </section>
+
+        <section className="jc-card mt-6 flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center"><div><b className="text-sm">Ready to continue?</b><p className="mt-1 text-xs text-[#789087]">{isSample ? "Sample roles are for testing; use live provider listings for real applications." : `Review the ${sourceLabel} listing before submitting anything.`}</p></div>{job.apply_url ? <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="jc-button-primary">View / apply via {sourceLabel} ↗</a> : <span className="jc-button-secondary opacity-50">Application link unavailable</span>}</section>
       </div>
+    </WorkspaceShell>
+  );
+}
 
-      <section className="mt-6 flex flex-col justify-between gap-4 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:p-6"><div><p className="font-black">Ready to continue?</p><p className="mt-1 text-sm text-slate-500">{isSample?"Sample roles are for testing; use live provider listings for real applications.":`Review the ${sourceLabel} listing before submitting any application.`}</p></div><div className="flex flex-wrap gap-2">{job.apply_url?<a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-violet-600 px-6 py-3 font-black text-white">{applyLabel}</a>:<button disabled className="rounded-xl bg-slate-100 px-6 py-3 font-black text-slate-400">Apply link unavailable</button>}{user&&<Link href="/profile" className="rounded-xl border border-slate-200 bg-white px-6 py-3 font-black">Improve profile</Link>}</div></section>
-    </div>
-  </main>;
+function companyInitials(company: string) {
+  return String(company || "JC").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "JC";
+}
+
+function salaryText(min: number | null, max: number | null) {
+  if (min && max) return `₹${min}–${max} LPA`;
+  if (max) return `Up to ₹${max} LPA`;
+  if (min) return `From ₹${min} LPA`;
+  return "Salary not listed";
 }
