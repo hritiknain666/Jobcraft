@@ -4,8 +4,8 @@ export type NormalizedJob = {
   title: string;
   company: string;
   location: string;
-  workMode: string;
-  experienceMin: number;
+  workMode: string | null;
+  experienceMin: number | null;
   experienceMax: number | null;
   salaryMinLpa: number | null;
   salaryMaxLpa: number | null;
