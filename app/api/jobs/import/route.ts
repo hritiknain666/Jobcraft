@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         provider: "Adzuna",
         preview: true,
+        providerReportedCount: payload.count ?? null,
         normalized: jobs.length,
         jobs: jobs.slice(0, 5).map((job) => ({
           externalId: job.externalId,
@@ -56,6 +57,14 @@ export async function POST(request: Request) {
           workMode: job.workMode,
           postedAt: job.postedAt,
           applyUrl: job.applyUrl,
+        })),
+        rawProviderSamples: (payload.results ?? []).slice(0, 5).map((job) => ({
+          externalId: job.id ?? null,
+          salaryMin: job.salary_min ?? null,
+          salaryMax: job.salary_max ?? null,
+          location: job.location?.display_name ?? null,
+          locationArea: job.location?.area ?? [],
+          descriptionExcerpt: (job.description ?? "").replace(/\s+/g, " ").trim().slice(0, 280),
         })),
       });
     }
