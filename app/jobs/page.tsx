@@ -1,22 +1,15 @@
 import Link from "next/link";
+import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
-import type { JobsListProfile } from "@/lib/jobs-list-match";
+import { calculateJobsListMatch, type JobsListProfile } from "@/lib/jobs-list-match";
 import { getJobFacets, type JobFacets } from "@/lib/job-sources/facets";
 import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
-import { JobCard } from "./_components/job-card";
-import { JobsHeader } from "./_components/jobs-header";
-import { JobsSearchHero } from "./_components/jobs-search-hero";
-import { JobsSidebar } from "./_components/jobs-sidebar";
 
 const EMPTY_FACETS: JobFacets = { titles: [], locations: [], skills: [], workModes: [] };
 const PAGE_SIZE = 24;
 
 function safeSearchTerm(value: string | undefined) {
-  return value
-    ?.trim()
-    .slice(0, 120)
-    .replace(/[(),{}"\\%*_]/g, " ")
-    .replace(/\s+/g, " ") ?? "";
+  return value?.trim().slice(0, 120).replace(/[(),{}"\\%*_]/g, " ").replace(/\s+/g, " ") ?? "";
 }
 
 function finiteNumber(value: string | undefined) {
@@ -45,11 +38,11 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  let profile: JobsListProfile | null = null;
+  let profile: (JobsListProfile & { full_name?: string | null; headline?: string | null }) | null = null;
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("skills,experience_years,city,target_roles,preferred_work_modes")
+      .select("full_name,headline,skills,experience_years,city,target_roles,preferred_work_modes")
       .eq("id", user.id)
       .maybeSingle();
     profile = data ?? null;
@@ -76,58 +69,126 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   if (params.work_mode?.trim()) query = query.eq("work_mode", params.work_mode.trim().slice(0, 40));
   if (experience !== null) query = query.lte("experience_min", experience);
   if (salary !== null) query = query.gte("salary_max_lpa", salary);
-  if (skillTerm) {
-    query = query.or(`skills.cs.{"${skillTerm}"},title.ilike.%${skillTerm}%,description.ilike.%${skillTerm}%`);
-  }
+  if (skillTerm) query = query.or(`skills.cs.{"${skillTerm}"},title.ilike.%${skillTerm}%,description.ilike.%${skillTerm}%`);
 
   const { data: jobs, error, count } = await query.range(from, to);
   const resultCount = count ?? jobs?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(resultCount / PAGE_SIZE));
   const pageJobs = jobs ?? [];
-  const sampleCount = pageJobs.filter((job) => job.source === "JobCraft").length;
-  const liveCount = pageJobs.length - sampleCount;
+  const liveCount = pageJobs.filter((job) => job.source !== "JobCraft").length;
+  const profileStrength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
   return (
-    <main className="min-h-screen bg-[#f6f7fb] text-[#0b1020]">
-      <JobsHeader loggedIn={Boolean(user)} />
-      <JobsSearchHero params={params} facets={facets} />
-
-      <section className="mx-auto grid max-w-[1400px] gap-6 px-5 py-8 sm:px-8 lg:grid-cols-[1fr_300px]">
-        <div>
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-black tracking-[.14em] text-violet-600">RESULTS</p>
-              <h2 className="mt-1 text-2xl font-black">{resultCount} role{resultCount === 1 ? "" : "s"}</h2>
-              {pageJobs.length > 0 && (
-                <p className="mt-1 text-xs text-slate-500">
-                  {totalPages > 1 ? `Page ${page} of ${totalPages} · ` : ""}
-                  {liveCount > 0 ? `${liveCount} live on this page · ` : ""}
-                  {sampleCount > 0 ? `${sampleCount} sample on this page` : ""}
-                </p>
-              )}
-            </div>
-            {!user && <Link href="/jobs?auth=signup" scroll={false} className="text-sm font-black text-violet-600">Create profile for match →</Link>}
+    <WorkspaceShell active="jobs" authenticated={Boolean(user)} name={profile?.full_name} headline={profile?.headline} strength={profileStrength}>
+      <div className="jc-content-wrap">
+        <section className="jc-discover-head">
+          <div>
+            <p className="jc-eyebrow">THE OPPORTUNITY MAP</p>
+            <h1 className="jc-page-title">Discover roles</h1>
           </div>
+          <a href="#job-filters" className="jc-button-secondary">☷ Filters⌄</a>
+        </section>
 
-          {error && <p className="mb-4 rounded-xl bg-red-50 p-4 text-red-700">Could not load jobs: {error.message}</p>}
-          <div className="space-y-4">{pageJobs.map((job) => <JobCard key={job.id} job={job} profile={profile} />)}</div>
-          {!pageJobs.length && !error && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-600">No roles matched. Try a wider search.</div>}
+        <form action="/jobs" className="jc-card jc-search-panel" id="job-filters">
+          <div className="jc-search-row">
+            <label className="jc-search-field">
+              <SearchIcon />
+              <input name="q" defaultValue={params.q ?? ""} placeholder="Search title, skill, or company" aria-label="Search title, skill, or company" />
+            </label>
+            <label className="jc-search-field">
+              <LocationIcon />
+              <input name="location" list="jc-locations" defaultValue={params.location ?? ""} placeholder="Location or city" aria-label="Location or city" />
+            </label>
+          </div>
+          <datalist id="jc-locations">{facets.locations.slice(0, 80).map((location) => <option key={location} value={location} />)}</datalist>
+          <datalist id="jc-skills">{facets.skills.slice(0, 120).map((skill) => <option key={skill} value={skill} />)}</datalist>
+          <details className="jc-filter-details" open={Boolean(params.skill || params.work_mode || params.salary || params.experience)}>
+            <summary>Advanced filters · skill, work mode, salary and experience</summary>
+            <div className="jc-filter-grid">
+              <input className="jc-input" name="skill" list="jc-skills" defaultValue={params.skill ?? ""} placeholder="Skill e.g. SQL" />
+              <select className="jc-input" name="work_mode" defaultValue={params.work_mode ?? ""}>
+                <option value="">Any work mode</option>
+                {facets.workModes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+              </select>
+              <input className="jc-input" name="salary" type="number" min="0" step="0.5" defaultValue={params.salary ?? ""} placeholder="Min salary LPA" />
+              <input className="jc-input" name="experience" type="number" min="0" max="50" step="0.5" defaultValue={params.experience ?? ""} placeholder="Your experience" />
+              <button className="jc-button-primary" type="submit">Apply filters →</button>
+            </div>
+          </details>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <button className="jc-button-primary" type="submit">Search roles →</button>
+            {(searchTerm || params.location || params.skill || params.work_mode || params.salary || params.experience) ? <Link href="/jobs" className="jc-text-link">Clear all filters</Link> : null}
+          </div>
+        </form>
 
-          {totalPages > 1 && !error && (
-            <nav aria-label="Job result pages" className="mt-8 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-              {page > 1
-                ? <Link href={pageHref(params, page - 1)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black">← Previous</Link>
-                : <span className="rounded-xl border border-slate-100 px-4 py-2 text-sm font-black text-slate-300">← Previous</span>}
-              <span className="text-sm font-bold text-slate-500">Page {page} of {totalPages}</span>
-              {page < totalPages
-                ? <Link href={pageHref(params, page + 1)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black">Next →</Link>
-                : <span className="rounded-xl border border-slate-100 px-4 py-2 text-sm font-black text-slate-300">Next →</span>}
-            </nav>
-          )}
+        <div className="jc-results-meta">
+          <span><b>{resultCount}</b> role{resultCount === 1 ? "" : "s"} tuned to your direction</span>
+          <span className="flex items-center gap-2 text-[#278363]">✣ {profile ? "Match engine active" : "Create a profile to activate matching"}</span>
         </div>
 
-        <JobsSidebar hasLiveJobs={liveCount > 0} />
-      </section>
-    </main>
+        {error ? <div className="jc-card p-5 text-red-700">Could not load jobs: {error.message}</div> : null}
+        <section className="jc-role-grid">
+          {pageJobs.map((job: any) => {
+            const match = calculateJobsListMatch(job, profile);
+            const sample = job.source === "JobCraft";
+            return (
+              <Link key={job.id} href={`/jobs/${job.id}`} className="jc-card jc-job-card">
+                <div className="jc-job-card-top">
+                  <span className="jc-company-square">{companyInitials(job.company)}</span>
+                  <span className="jc-bookmark" aria-hidden="true">⌑</span>
+                </div>
+                <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#f6dfc6] px-2 py-1 text-[9px] normal-case tracking-normal text-[#6a543a]">{sample ? "Sample role" : "Live role"}</span></div>
+                <h2 className="jc-job-title">{job.title}</h2>
+                <p className="jc-job-details">⌖ {job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
+                <div className="jc-job-card-footer">
+                  <div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div>
+                  <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source || "JobCraft"}</div>
+                </div>
+              </Link>
+            );
+          })}
+        </section>
+
+        {!pageJobs.length && !error ? <div className="jc-card mt-5 p-12 text-center text-[#6f887f]">No roles matched. Try a wider search.</div> : null}
+        {liveCount > 0 ? <p className="mt-5 text-xs leading-6 text-[#789087]">Live vacancies retain their provider source and external application link. Always verify the provider listing before applying.</p> : null}
+
+        {totalPages > 1 && !error ? (
+          <nav aria-label="Job result pages" className="jc-pagination">
+            {page > 1 ? <Link href={pageHref(params, page - 1)} className="jc-button-secondary">← Previous</Link> : <span className="jc-button-secondary opacity-40">← Previous</span>}
+            <span className="text-sm font-bold text-[#718981]">Page {page} of {totalPages}</span>
+            {page < totalPages ? <Link href={pageHref(params, page + 1)} className="jc-button-secondary">Next →</Link> : <span className="jc-button-secondary opacity-40">Next →</span>}
+          </nav>
+        ) : null}
+      </div>
+    </WorkspaceShell>
   );
+}
+
+function companyInitials(company: string) {
+  return String(company || "JC").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "JC";
+}
+
+function salaryText(min: number | null, max: number | null) {
+  if (min && max) return `₹${min}–${max} LPA`;
+  if (max) return `Up to ₹${max} LPA`;
+  if (min) return `From ₹${min} LPA`;
+  return "Salary not listed";
+}
+
+function postedAge(postedAt: string | null) {
+  if (!postedAt) return "Recently posted";
+  const ms = Date.now() - new Date(postedAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "Recently posted";
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 24) return `${Math.max(1, hours)}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function SearchIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>;
+}
+
+function LocationIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>;
 }
