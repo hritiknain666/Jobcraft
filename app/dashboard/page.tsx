@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch } from "@/lib/job-match";
@@ -8,7 +7,8 @@ import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/?auth=login");
+
+  if (!user) return <GuestWorkspace />;
 
   const [{ data: profile }, { count: resumeCount }, { data: applications }, { data: jobs }] = await Promise.all([
     supabase.from("profiles").select("full_name,city,headline,experience_years,target_roles,skills,preferred_work_modes").eq("id", user.id).maybeSingle(),
@@ -65,7 +65,7 @@ export default async function DashboardPage() {
     .slice(0, 2);
 
   return (
-    <WorkspaceShell active="workspace" name={displayName} headline={profile?.headline} strength={profileStrength}>
+    <WorkspaceShell active="workspace" name={displayName} headline={profile?.headline} strength={profileStrength} authenticated>
       <div className="jc-content-wrap">
         <section className="jc-dashboard-head">
           <div>
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
               <span className="text-xl text-[#9bb3aa]">◷</span>
             </div>
             <div className="jc-upcoming-list">
-              {upcoming.length ? upcoming.map((item: any, index: number) => (
+              {upcoming.length ? upcoming.map((item: any) => (
                 <Link href="/applications" key={item.id} className="jc-upcoming-item text-inherit no-underline">
                   <span className="jc-upcoming-badge">{companyInitials(item.jobs?.company || "JC").slice(0, 1)}</span>
                   <span className="jc-upcoming-copy">
@@ -144,7 +144,7 @@ export default async function DashboardPage() {
             <Link href="/applications" className="jc-text-link">See applications ↗</Link>
           </div>
           <div className="jc-activity-grid">
-            {(applications ?? []).slice(0, 4).map((item: any, index: number) => (
+            {(applications ?? []).slice(0, 4).map((item: any) => (
               <div key={item.id} className="jc-activity-item">
                 <b>{activityTitle(item.status)}</b>
                 <span>{item.jobs?.company || "JobCraft"} · {item.jobs?.title || "Application"} · {new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
@@ -161,8 +161,89 @@ export default async function DashboardPage() {
   );
 }
 
+function GuestWorkspace() {
+  const currentDate = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "2-digit", month: "short" }).format(new Date()).toUpperCase();
+  return (
+    <WorkspaceShell active="workspace" name="Your profile" headline="Log in to activate your workspace" strength={0} authenticated={false}>
+      <div className="jc-content-wrap">
+        <section className="jc-dashboard-head">
+          <div>
+            <p className="jc-eyebrow">{currentDate} · JOBCRAFT WORKSPACE</p>
+            <h1 className="jc-page-title">Your career workspace is ready.</h1>
+            <p className="jc-page-copy max-w-2xl">This is the real JobCraft product. Log in when you want to search roles, build your profile, prepare resumes, tailor applications or use career tools.</p>
+          </div>
+          <Link href="/dashboard?auth=login" scroll={false} className="jc-button-primary">Log in to JobCraft <span>→</span></Link>
+        </section>
+
+        <section className="jc-stats-grid" aria-label="Locked career search summary">
+          <LockedStat label="New matches" note="personalised after login" />
+          <LockedStat label="Saved roles" note="your shortlist" />
+          <LockedStat label="In motion" note="active applications" />
+          <LockedStat label="Interviews" note="your conversations" />
+        </section>
+
+        <section className="jc-dashboard-grid">
+          <div className="jc-card jc-section-card">
+            <div className="jc-section-head">
+              <div>
+                <p className="jc-eyebrow">YOUR JOBCRAFT TOOLKIT</p>
+                <h2 className="jc-section-title">Everything stays in one workspace</h2>
+                <p className="jc-section-subtitle">See the full product before you sign in. Your personal data only appears after authentication.</p>
+              </div>
+            </div>
+            <div className="jc-role-list">
+              {[
+                ["JM", "Job matching", "Search roles and see evidence-aware fit signals.", "/jobs"],
+                ["RB", "Resume builder", "Create factual ATS-friendly resume versions.", "/resume/builder"],
+                ["RT", "Resume tailoring", "Prepare a role-specific version from real evidence.", "/resume/tailor"],
+                ["CL", "Cover letters", "Create grounded role-specific application drafts.", "/cover-letter"],
+              ].map(([mark, title, text, href]) => (
+                <Link key={title} href={href} className="jc-role-row">
+                  <span className="jc-company-dot">{mark}</span>
+                  <span className="jc-role-copy"><b>{title}</b><span>{text}</span></span>
+                  <span className="jc-role-meta"><span className="jc-match-pill">Login required</span></span>
+                  <span aria-hidden="true">›</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="jc-dark-card jc-coming-card">
+            <div className="jc-section-head">
+              <div><p className="jc-eyebrow">CAREER TOOLS</p><h2 className="jc-section-title">Built around your search</h2></div>
+            </div>
+            <div className="mt-6 space-y-4 text-sm leading-6 text-[#b5c7c0]">
+              <p><b className="text-white">Resume Studio</b><br/>Build, upload and manage resume versions.</p>
+              <p><b className="text-white">Certificates</b><br/>Keep credentials and private proof organised.</p>
+              <p><b className="text-white">Career Assistant</b><br/>Turn your profile and application history into priorities.</p>
+              <p><b className="text-white">Application Plan</b><br/>Track saved roles through interview and offer.</p>
+            </div>
+            <Link href="/dashboard?auth=signup" scroll={false} className="mt-7 inline-block text-sm font-extrabold text-[#f49a48] no-underline">Create your workspace ↗</Link>
+          </div>
+        </section>
+
+        <section className="jc-card jc-activity-card">
+          <div className="jc-section-head">
+            <div><p className="jc-eyebrow">PRIVATE BY DEFAULT</p><h2 className="jc-section-title">Your data appears only after login</h2></div>
+          </div>
+          <div className="jc-activity-grid">
+            <div className="jc-activity-item"><b>Profile signal</b><span>Skills, target roles, experience, city and work preferences.</span></div>
+            <div className="jc-activity-item"><b>Career documents</b><span>Resumes, certificates, tailored versions and cover letters.</span></div>
+            <div className="jc-activity-item"><b>Application history</b><span>Saved roles, applications, interviews and offers.</span></div>
+            <div className="jc-activity-item"><b>Match insights</b><span>Only known job data and profile evidence contribute to fit signals.</span></div>
+          </div>
+        </section>
+      </div>
+    </WorkspaceShell>
+  );
+}
+
 function StatCard({ label, value, note, icon }: { label: string; value: number; note: string; icon: string }) {
   return <div className="jc-card jc-stat-card"><div className="jc-stat-top"><span>{label}</span><span className="jc-stat-icon">{icon}</span></div><div className="jc-stat-value">{value}</div><div className="jc-stat-note">{note}</div></div>;
+}
+
+function LockedStat({ label, note }: { label: string; note: string }) {
+  return <div className="jc-card jc-stat-card"><div className="jc-stat-top"><span>{label}</span><span className="jc-stat-icon">◌</span></div><div className="jc-stat-value">—</div><div className="jc-stat-note">{note}</div></div>;
 }
 
 function companyInitials(company: string) {
