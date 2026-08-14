@@ -1,5 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {
+  getAdzunaConfig,
+  isAdzunaAttributionReady,
+  isAdzunaPublicationApproved,
+  isAdzunaPublishingReady,
+} from "../lib/job-sources/config";
 import { normalizeJob } from "../lib/job-sources/normalize";
 import { validateLiveImportBatch, validateNormalizedJob } from "../lib/job-sources/validate";
 
@@ -48,4 +54,31 @@ test("duplicate provider identities are rejected within one import batch", () =>
   const second = normalizeJob({ source: "Provider", externalId: "same", title: "Role B", company: "Example" });
 
   assert.throws(() => validateLiveImportBatch([first, second]), /Duplicate job identity/);
+});
+
+test("Adzuna configuration requires both credentials", () => {
+  assert.equal(getAdzunaConfig({ ADZUNA_APP_ID: "id" } as NodeJS.ProcessEnv), null);
+  assert.equal(getAdzunaConfig({ ADZUNA_APP_KEY: "key" } as NodeJS.ProcessEnv), null);
+  assert.deepEqual(
+    getAdzunaConfig({ ADZUNA_APP_ID: " id ", ADZUNA_APP_KEY: " key " } as NodeJS.ProcessEnv),
+    { appId: "id", appKey: "key" }
+  );
+});
+
+test("Adzuna persisted publishing requires approval and attribution readiness", () => {
+  const approvedOnly = { ADZUNA_PUBLISHING_READY: "true" } as NodeJS.ProcessEnv;
+  assert.equal(isAdzunaPublicationApproved(approvedOnly), true);
+  assert.equal(isAdzunaAttributionReady(approvedOnly), false);
+  assert.equal(isAdzunaPublishingReady(approvedOnly), false);
+
+  const attributionOnly = { ADZUNA_ATTRIBUTION_READY: "TRUE" } as NodeJS.ProcessEnv;
+  assert.equal(isAdzunaPublicationApproved(attributionOnly), false);
+  assert.equal(isAdzunaAttributionReady(attributionOnly), true);
+  assert.equal(isAdzunaPublishingReady(attributionOnly), false);
+
+  const ready = {
+    ADZUNA_PUBLISHING_READY: " true ",
+    ADZUNA_ATTRIBUTION_READY: "true",
+  } as NodeJS.ProcessEnv;
+  assert.equal(isAdzunaPublishingReady(ready), true);
 });
