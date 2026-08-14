@@ -3,7 +3,9 @@ function initials(company: string) {
 }
 
 export function JobCardMain({ job, match }: { job: any; match: any }) {
-  const isSample = job.source === "JobCraft";
+  const source = String(job.source ?? "").trim();
+  const isSample = source === "JobCraft";
+  const isAdzuna = source.toLowerCase() === "adzuna";
 
   return (
     <div className="p-5 sm:p-6">
@@ -13,8 +15,9 @@ export function JobCardMain({ job, match }: { job: any; match: any }) {
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-black text-violet-600">{job.company}</p>
             <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${isSample ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-              {isSample ? "SAMPLE ROLE" : `LIVE · ${job.source ?? "SOURCE"}`}
+              {isSample ? "SAMPLE ROLE" : `LIVE · ${source || "SOURCE"}`}
             </span>
+            {isAdzuna && <a href="https://www.adzuna.in/" target="_blank" rel="noreferrer" className="text-[11px] font-black text-slate-500 underline decoration-slate-300 underline-offset-2">Jobs by Adzuna ↗</a>}
           </div>
           <h3 className="mt-1 text-2xl font-black">{job.title}</h3>
           <p className="mt-2 text-sm text-slate-500">{job.location} · {job.work_mode} · {job.salary_min_lpa ? `₹${job.salary_min_lpa}–${job.salary_max_lpa} LPA` : "Salary not listed"}</p>
