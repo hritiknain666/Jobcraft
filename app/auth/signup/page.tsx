@@ -8,22 +8,13 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   return (
     <AuthPageShell mode="signup">
       {params.error && <p className="mt-5 rounded-2xl border border-red-100 bg-red-50 p-3.5 text-sm text-red-700">{params.error}</p>}
-
       <form action={signup} className="mt-7 space-y-4">
-        <label className="block text-sm font-black">Full name
-          <input name="fullName" type="text" required autoComplete="name" placeholder="Your full name" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-        </label>
-        <label className="block text-sm font-black">Email
-          <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-        </label>
-        <label className="block text-sm font-black">Password
-          <input name="password" type="password" required minLength={6} autoComplete="new-password" placeholder="At least 6 characters" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 font-normal outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-          <span className="mt-2 block text-xs font-normal leading-5 text-slate-400">Use a password you do not reuse elsewhere.</span>
-        </label>
-        <button className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 font-black text-white shadow-[0_16px_35px_rgba(124,58,237,.25)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_45px_rgba(124,58,237,.32)]">Create free account →</button>
+        <label className="jc-form-field">Full name<input name="fullName" type="text" required maxLength={120} autoComplete="name" placeholder="Your full name" className="jc-input mt-2" /></label>
+        <label className="jc-form-field">Email<input name="email" type="email" required maxLength={254} autoComplete="email" placeholder="you@example.com" className="jc-input mt-2" /></label>
+        <label className="jc-form-field">Password<input name="password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" placeholder="At least 8 characters" className="jc-input mt-2" /><span className="mt-2 block text-[11px] font-normal leading-5 text-[#789087]">Use at least 8 characters and do not reuse a password from another service.</span></label>
+        <button className="jc-button-primary w-full !py-4">Create free account →</button>
       </form>
-
-      <p className="mt-6 text-center text-sm text-slate-500">Already registered? <Link href="/auth/login" className="font-black text-violet-600 hover:text-violet-700">Log in</Link></p>
+      <p className="mt-6 text-center text-sm text-[#789087]">Already registered? <Link href="/auth/login" className="font-black text-[#278363]">Log in</Link></p>
     </AuthPageShell>
   );
 }
