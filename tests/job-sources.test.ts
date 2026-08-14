@@ -6,6 +6,7 @@ import {
   isAdzunaPublicationApproved,
   isAdzunaPublishingReady,
 } from "../lib/job-sources/config";
+import { extractJobMetadata } from "../lib/job-sources/extract-metadata";
 import { normalizeJob } from "../lib/job-sources/normalize";
 import { validateLiveImportBatch, validateNormalizedJob } from "../lib/job-sources/validate";
 
@@ -81,4 +82,20 @@ test("Adzuna persisted publishing requires approval and attribution readiness", 
     ADZUNA_ATTRIBUTION_READY: "true",
   } as NodeJS.ProcessEnv;
   assert.equal(isAdzunaPublishingReady(ready), true);
+});
+
+test("provider metadata extraction only promotes explicit skills and work mode", () => {
+  const metadata = extractJobMetadata(
+    "Senior Data Analyst",
+    "Hybrid role using SQL, Power BI, Microsoft Excel and Python. Experience with Tableau is useful."
+  );
+
+  assert.equal(metadata.workMode, "Hybrid");
+  assert.deepEqual(metadata.skills, ["SQL", "Power BI", "Excel", "Python", "Tableau"]);
+});
+
+test("negated remote language does not become a remote job", () => {
+  const metadata = extractJobMetadata("Software Engineer", "This is not remote. Work from office in Pune using Java and AWS.");
+  assert.equal(metadata.workMode, "On-site");
+  assert.deepEqual(metadata.skills, ["Java", "AWS"]);
 });
