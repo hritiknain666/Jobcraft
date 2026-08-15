@@ -20,7 +20,7 @@ export function getProviderAttribution(source: string | null | undefined, applyU
     return { label: "Source: Jobicy", href: applyUrl || "https://jobicy.com/", requiredPerListing: true };
   }
   if (normalized === "himalayas") {
-    return { label: "Source: Himalayas", href: applyUrl || "https://himalayas.app/", requiredPerListing: true };
+    return { label: "Source: Himalayas", href: "https://himalayas.app/", requiredPerListing: true };
   }
   if (normalized === "remote ok") {
     return { label: "Source: Remote OK", href: applyUrl || "https://remoteok.com/", requiredPerListing: true };
