@@ -46,6 +46,11 @@ function skillsFor(title: string, description: string, extras: unknown[] = []) {
 }
 
 function validIso(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const millis = value > 10_000_000_000 ? value : value * 1000;
+    const d = new Date(millis);
+    if (Number.isFinite(d.getTime())) return d.toISOString();
+  }
   const d = new Date(String(value ?? ""));
   return Number.isFinite(d.getTime()) ? d.toISOString() : new Date().toISOString();
 }
@@ -75,8 +80,20 @@ function inferMode(title: string, description: string, fallback: JobRow["work_mo
   return fallback;
 }
 
-async function fetchJson(url: string) {
-  const response = await fetch(url, { headers: { "User-Agent": "JobCraft/1.0 job aggregation for candidates" }, signal: AbortSignal.timeout(20_000) });
+function experienceRange(value: unknown): [number | null, number | null] {
+  const v = text(value, 200);
+  const range = v.match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(?:years?|yrs?)/i);
+  if (range) return [Number(range[1]), Number(range[2])];
+  const one = v.match(/(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)/i);
+  return one ? [Number(one[1]), null] : [null, null];
+}
+
+async function fetchJson(url: string, init: RequestInit = {}) {
+  const response = await fetch(url, {
+    ...init,
+    headers: { "User-Agent": "JobCraft/1.0 job aggregation for candidates", ...(init.headers ?? {}) },
+    signal: AbortSignal.timeout(20_000),
+  });
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   return await response.json();
 }
@@ -117,24 +134,31 @@ async function jobicy(): Promise<SourceResult> {
   } catch (e) { return { source: "Jobicy", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
 }
 
+function restrictionText(restriction: any) {
+  if (typeof restriction === "string") return restriction;
+  return String(restriction?.alpha2 ?? restriction?.countryCode ?? restriction?.name ?? restriction?.slug ?? "");
+}
+
 async function himalayas(): Promise<SourceResult> {
   try {
     const payload = await fetchJson("https://himalayas.app/jobs/api/search?country=IN&sort=recent&page=1");
+    const rows = Array.isArray(payload?.jobs) ? payload.jobs : Array.isArray(payload?.data) ? payload.data : [];
     const jobs: JobRow[] = [];
-    for (const raw of Array.isArray(payload?.jobs) ? payload.jobs : []) {
+    for (const raw of rows) {
       const restrictions = Array.isArray(raw?.locationRestrictions) ? raw.locationRestrictions : [];
-      const eligible = restrictions.length === 0 || restrictions.some((r: any) => String(r?.alpha2 ?? "").toUpperCase() === "IN" || /india/i.test(String(r?.name ?? "")));
+      const eligible = restrictions.length === 0 || restrictions.some((r: any) => /^(in|india)$/i.test(restrictionText(r).trim()) || /\bindia\b/i.test(restrictionText(r)));
       if (!eligible) continue;
       const title = text(raw?.title, 300); const company = text(raw?.companyName, 300); const description = text(raw?.description);
       if (!raw?.guid || !title || !company || description.length < 40) continue;
-      const expiry = Number(raw?.expiryDate); if (Number.isFinite(expiry) && expiry > 0 && expiry < Date.now()) continue;
-      const location = restrictions.length ? restrictions.map((r: any) => text(r?.name || r?.alpha2, 100)).filter(Boolean).join(", ") : "Worldwide";
+      const expiryRaw = raw?.expiryDate; const expiry = typeof expiryRaw === "number" ? expiryRaw : new Date(String(expiryRaw ?? "")).getTime();
+      const expiryMillis = expiry > 0 && expiry < 10_000_000_000 ? expiry * 1000 : expiry;
+      if (Number.isFinite(expiryMillis) && expiryMillis > 0 && expiryMillis < Date.now()) continue;
+      const location = restrictions.length ? restrictions.map(restrictionText).map((v) => text(v, 100)).filter(Boolean).join(", ") : "Worldwide";
       const inr = String(raw?.currency ?? "").toUpperCase() === "INR";
       jobs.push({ source: "Himalayas", external_id: String(raw.guid), title, company, location, work_mode: "Remote",
         experience_min: null, experience_max: null, salary_min_lpa: inr ? annualInrToLpa(raw?.minSalary) : null, salary_max_lpa: inr ? annualInrToLpa(raw?.maxSalary) : null,
         skills: skillsFor(title, description, [...(Array.isArray(raw?.categories) ? raw.categories : []), ...(Array.isArray(raw?.parentCategories) ? raw.parentCategories : [])]),
-        description, apply_url: text(raw?.applicationLink, 1000) || null, is_active: true,
-        posted_at: Number.isFinite(Number(raw?.pubDate)) ? new Date(Number(raw.pubDate)).toISOString() : validIso(raw?.pubDate) });
+        description, apply_url: text(raw?.applicationLink, 1000) || null, is_active: true, posted_at: validIso(raw?.pubDate) });
     }
     return { source: "Himalayas", jobs };
   } catch (e) { return { source: "Himalayas", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
@@ -154,7 +178,7 @@ async function remoteOk(): Promise<SourceResult> {
       if (!raw?.id || title.length < 3 || company.length < 2 || description.length < 80 || /^jobs?$/i.test(title)) continue;
       jobs.push({ source: "Remote OK", external_id: String(raw.id), title, company, location: location || "Worldwide", work_mode: "Remote",
         experience_min: null, experience_max: null, salary_min_lpa: null, salary_max_lpa: null,
-        skills: skillsFor(title, description, tags), description, apply_url: text(raw?.url || raw?.apply_url, 1000) || null, is_active: true, posted_at: validIso(raw?.date || (raw?.epoch ? Number(raw.epoch) * 1000 : null)) });
+        skills: skillsFor(title, description, tags), description, apply_url: text(raw?.url || raw?.apply_url, 1000) || null, is_active: true, posted_at: validIso(raw?.date || raw?.epoch) });
     }
     return { source: "Remote OK", jobs };
   } catch (e) { return { source: "Remote OK", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
@@ -171,10 +195,74 @@ async function arbeitnow(): Promise<SourceResult> {
       jobs.push({ source: "Arbeitnow", external_id: String(raw.slug), title, company, location, work_mode: raw?.remote ? "Remote" : inferMode(title, description),
         experience_min: null, experience_max: null, salary_min_lpa: null, salary_max_lpa: null,
         skills: skillsFor(title, description, Array.isArray(raw?.tags) ? raw.tags : []), description, apply_url: text(raw?.url, 1000) || null,
-        is_active: true, posted_at: raw?.created_at ? new Date(Number(raw.created_at) * 1000).toISOString() : new Date().toISOString() });
+        is_active: true, posted_at: validIso(raw?.created_at) });
     }
     return { source: "Arbeitnow", jobs };
   } catch (e) { return { source: "Arbeitnow", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
+}
+
+async function indianApi(apiKey: string): Promise<SourceResult> {
+  try {
+    const payload = await fetchJson("https://jobs.indianapi.in/jobs?limit=50", { headers: { "X-Api-Key": apiKey, Accept: "application/json" } });
+    const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.jobs) ? payload.jobs : Array.isArray(payload?.data) ? payload.data : [];
+    const jobs: JobRow[] = [];
+    for (const raw of rows) {
+      const title = text(raw?.title ?? raw?.job_title, 300); const company = text(raw?.company ?? raw?.company_name, 300);
+      const description = text(raw?.job_description ?? raw?.description);
+      const id = raw?.id ?? raw?.job_id ?? raw?.external_id;
+      if (id === null || id === undefined || !title || !company || description.length < 20) continue;
+      const [experienceMin, experienceMax] = experienceRange(raw?.experience ?? raw?.experience_required);
+      const sourceSkills = Array.isArray(raw?.skills) ? raw.skills : typeof raw?.skills === "string" ? raw.skills.split(/[,|]/) : [];
+      jobs.push({ source: "IndianAPI", external_id: String(id), title, company, location: text(raw?.location, 300) || "India",
+        work_mode: inferMode(title, description), experience_min: experienceMin, experience_max: experienceMax,
+        salary_min_lpa: null, salary_max_lpa: null, skills: skillsFor(title, description, sourceSkills), description,
+        apply_url: text(raw?.apply_link ?? raw?.apply_url ?? raw?.url, 1000) || null, is_active: true,
+        posted_at: validIso(raw?.posted_date ?? raw?.posted_at ?? raw?.date_posted) });
+    }
+    return { source: "IndianAPI", jobs };
+  } catch (e) { return { source: "IndianAPI", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
+}
+
+async function jooble(apiKey: string): Promise<SourceResult> {
+  try {
+    const payload = await fetchJson(`https://in.jooble.org/api/${encodeURIComponent(apiKey)}`, {
+      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ keywords: "", location: "India", page: "1", ResultOnPage: "50", companysearch: "false" }),
+    });
+    const jobs: JobRow[] = [];
+    for (const raw of Array.isArray(payload?.jobs) ? payload.jobs : []) {
+      const title = text(raw?.title, 300); const company = text(raw?.company, 300); const description = text(raw?.snippet);
+      if (raw?.id === null || raw?.id === undefined || !title || !company) continue;
+      jobs.push({ source: "Jooble", external_id: String(raw.id), title, company, location: text(raw?.location, 300) || "India",
+        work_mode: inferMode(title, description), experience_min: null, experience_max: null, salary_min_lpa: null, salary_max_lpa: null,
+        skills: skillsFor(title, description), description, apply_url: text(raw?.link, 1000) || null, is_active: true, posted_at: validIso(raw?.updated) });
+    }
+    return { source: "Jooble", jobs };
+  } catch (e) { return { source: "Jooble", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
+}
+
+async function theirStack(apiKey: string): Promise<SourceResult> {
+  try {
+    const discoveredSince = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+    const payload = await fetchJson("https://api.theirstack.com/v1/jobs/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ job_country_code_or: ["IN"], posted_at_max_age_days: 30, discovered_at_gte: discoveredSince, is_closed: false, limit: 5, page: 0 }),
+    });
+    const jobs: JobRow[] = [];
+    for (const raw of Array.isArray(payload?.data) ? payload.data : []) {
+      const title = text(raw?.job_title, 300); const company = text(raw?.company, 300); const description = text(raw?.description);
+      if (raw?.id === null || raw?.id === undefined || !title || !company) continue;
+      const extras = [...(Array.isArray(raw?.technology_slugs) ? raw.technology_slugs : []), ...(Array.isArray(raw?.keyword_slugs) ? raw.keyword_slugs : [])];
+      const currency = String(raw?.salary_currency ?? "").toUpperCase();
+      jobs.push({ source: "TheirStack", external_id: String(raw.id), title, company, location: text(raw?.long_location ?? raw?.location, 300) || "India",
+        work_mode: raw?.remote ? "Remote" : raw?.hybrid ? "Hybrid" : inferMode(title, description), experience_min: null, experience_max: null,
+        salary_min_lpa: currency === "INR" ? annualInrToLpa(raw?.min_annual_salary) : null, salary_max_lpa: currency === "INR" ? annualInrToLpa(raw?.max_annual_salary) : null,
+        skills: skillsFor(title, description, extras), description, apply_url: text(raw?.url ?? raw?.source_url, 1000) || null,
+        is_active: true, posted_at: validIso(raw?.date_posted) });
+    }
+    return { source: "TheirStack", jobs };
+  } catch (e) { return { source: "TheirStack", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
 }
 
 async function sha256(value: string) {
@@ -206,8 +294,18 @@ Deno.serve(async (req) => {
   if (runError || !run?.id) return Response.json({ error: "Could not create refresh audit record" }, { status: 500 });
 
   try {
-    const results = await Promise.all([remotive(), jobicy(), himalayas(), remoteOk(), arbeitnow()]);
-    const summary: Record<string, unknown> = {};
+    const loaders: Promise<SourceResult>[] = [remotive(), jobicy(), himalayas(), remoteOk(), arbeitnow()];
+    const indianKey = Deno.env.get("INDIANAPI_JOBS_API_KEY")?.trim();
+    const joobleKey = Deno.env.get("JOOBLE_API_KEY")?.trim();
+    const theirStackKey = Deno.env.get("THEIRSTACK_API_KEY")?.trim();
+    if (indianKey) loaders.push(indianApi(indianKey));
+    if (joobleKey) loaders.push(jooble(joobleKey));
+    if (theirStackKey) loaders.push(theirStack(theirStackKey));
+
+    const results = await Promise.all(loaders);
+    const summary: Record<string, unknown> = {
+      configuration: { IndianAPI: Boolean(indianKey), Jooble: Boolean(joobleKey), TheirStack: Boolean(theirStackKey) },
+    };
     let failed = 0; let imported = 0;
 
     for (const result of results) {
@@ -222,7 +320,7 @@ Deno.serve(async (req) => {
     }
 
     const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
-    await supabase.from("jobs").update({ is_active: false }).in("source", ["Remotive", "Jobicy", "Himalayas", "Remote OK", "Arbeitnow"]).lt("posted_at", cutoff);
+    await supabase.from("jobs").update({ is_active: false }).in("source", ["Remotive", "Jobicy", "Himalayas", "Remote OK", "Arbeitnow", "IndianAPI", "Jooble", "TheirStack"]).lt("posted_at", cutoff);
 
     const status = failed === 0 ? "success" : failed < results.length ? "partial" : "failed";
     await supabase.from("job_refresh_runs").update({ status, finished_at: new Date().toISOString(), summary }).eq("id", run.id);
