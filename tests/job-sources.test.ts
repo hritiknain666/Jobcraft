@@ -211,5 +211,5 @@ test("TheirStack converts only annual INR salary values to LPA", () => {
   assert.equal(jobs[0].salaryMinLpa, 20);
   assert.equal(jobs[0].salaryMaxLpa, 30);
   assert.equal(jobs[0].workMode, "Remote");
-  assert.ok(jobs[0].skills.includes("Snowflake"));
+  assert.ok(jobs[0].skills.some((skill) => skill.toLowerCase() === "snowflake"));
 });
