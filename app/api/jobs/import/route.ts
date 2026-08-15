@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { isAdzunaPublishingReady } from "@/lib/job-sources/config";
-import { fetchAdzunaIndia } from "@/lib/job-sources/fetch-adzuna";
-import { normalizeAdzunaIndia } from "@/lib/job-sources/providers/adzuna";
+import { loadProviderBatch, type ProviderImportInput } from "@/lib/job-sources/provider-runner";
+import { syncLiveJobSnapshot } from "@/lib/job-sources/sync-snapshot";
 import { upsertLiveJobs } from "@/lib/job-sources/upsert";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -22,68 +21,71 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  let body: { provider?: string; what?: string; where?: string; page?: number; resultsPerPage?: number; preview?: boolean } = {};
+  let body: ProviderImportInput = {};
   try {
     body = await request.json();
   } catch {
-    // Empty JSON body is acceptable; defaults to the newest broad India results.
-  }
-
-  const provider = (body.provider ?? "adzuna").toLowerCase();
-  if (provider !== "adzuna") {
-    return NextResponse.json({ error: "Unsupported job provider." }, { status: 400 });
+    // Empty JSON body is acceptable and defaults to Adzuna preview/import behavior.
   }
 
   try {
-    const payload = await fetchAdzunaIndia({
-      what: body.what,
-      where: body.where,
-      page: body.page,
-      resultsPerPage: body.resultsPerPage,
-    });
-    const jobs = normalizeAdzunaIndia(payload);
+    const batch = await loadProviderBatch(body);
 
     if (body.preview === true) {
       return NextResponse.json({
-        provider: "Adzuna",
+        provider: batch.provider,
         preview: true,
-        providerReportedCount: payload.count ?? null,
-        normalized: jobs.length,
-        jobs: jobs.slice(0, 5).map((job) => ({
+        providerReportedCount: batch.providerReportedCount,
+        normalized: batch.jobs.length,
+        canPersist: batch.canPersist,
+        persistenceReason: batch.canPersist ? null : batch.persistenceReason ?? null,
+        jobs: batch.jobs.slice(0, 5).map((job) => ({
           externalId: job.externalId,
           title: job.title,
           company: job.company,
           location: job.location,
           workMode: job.workMode,
+          experienceMin: job.experienceMin,
+          experienceMax: job.experienceMax,
+          salaryMinLpa: job.salaryMinLpa,
+          salaryMaxLpa: job.salaryMaxLpa,
+          skills: job.skills.slice(0, 12),
           postedAt: job.postedAt,
           applyUrl: job.applyUrl,
         })),
-        rawProviderSamples: (payload.results ?? []).slice(0, 5).map((job) => ({
-          externalId: job.id ?? null,
-          salaryMin: job.salary_min ?? null,
-          salaryMax: job.salary_max ?? null,
-          location: job.location?.display_name ?? null,
-          locationArea: job.location?.area ?? [],
-          descriptionExcerpt: (job.description ?? "").replace(/\s+/g, " ").trim().slice(0, 280),
-        })),
+        rawProviderSamples: batch.rawProviderSamples ?? [],
       });
     }
 
-    if (!isAdzunaPublishingReady()) {
+    if (!batch.canPersist) {
       return NextResponse.json({
-        error: "Adzuna publishing is not enabled. Verify provider/commercial approval and production attribution, then enable both readiness flags.",
+        error: batch.persistenceReason ?? `${batch.provider} publishing is not enabled.`,
       }, { status: 409 });
     }
 
-    const imported = await upsertLiveJobs(createAdminClient(), jobs);
+    const admin = createAdminClient();
+    if (batch.snapshot) {
+      const synced = await syncLiveJobSnapshot(admin, batch.snapshot.source, batch.jobs, {
+        externalIdPrefix: batch.snapshot.externalIdPrefix,
+      });
+      return NextResponse.json({
+        provider: batch.provider,
+        normalized: batch.jobs.length,
+        upserted: synced.upserted,
+        deactivated: synced.deactivated,
+      });
+    }
 
+    const imported = await upsertLiveJobs(admin, batch.jobs);
     return NextResponse.json({
-      provider: "Adzuna",
-      normalized: jobs.length,
+      provider: batch.provider,
+      normalized: batch.jobs.length,
       upserted: imported.length,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Job import failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const badRequest = /unsupported|require|invalid/i.test(message);
+    const notConfigured = /disabled until|not configured/i.test(message);
+    return NextResponse.json({ error: message }, { status: badRequest ? 400 : notConfigured ? 409 : 500 });
   }
 }
