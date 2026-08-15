@@ -4,31 +4,59 @@ JobCraft is an India-first career platform for job discovery, transparent job ma
 
 ## Current product state
 
-Implemented and build-verified:
+Implemented and production-verified:
 
 - Supabase authentication, profiles and SSR session refresh
 - Password recovery flow
-- Jobs search and filtering
-- Database-backed pagination for job results
+- Browse-first product experience; login is required only for personal/save actions
+- Jobs search and filtering with database-backed pagination
 - 45-day freshness policy so stale listings stop appearing in search/facets
 - Skill filtering that can fall back to title/description text when a provider has no structured skill array
-- Shared transparent job-match scoring across the app
-- Match evidence coverage/confidence so sparse provider data cannot look artificially precise
-- Smart skill aliases (for example Power BI/PowerBI, React/React.js, PostgreSQL/Postgres)
-- Resume and career-product surfaces
+- Shared transparent job-match scoring with evidence coverage/confidence
+- Resume, tailoring, cover-letter, certificate and career-assistance surfaces
 - Application tracking
-- Certificate support, private storage and ownership controls
+- Private user storage and ownership controls
 - Loading, error, empty and mobile navigation states
-- Job-source normalization architecture
+- Normalized multi-provider job-source architecture
 - Unknown provider work mode/experience preserved as unknown instead of invented defaults
-- Explicit sample-vs-live job labeling
-- Secure server-side job import endpoint with protected preview mode
-- Adzuna provider adapter, publishing gate and import orchestration
-- Atomic upsert using `(source, external_id)`
+- Explicit sample-vs-live job labeling and provider attribution
+- Atomic live-job upsert using `(source, external_id)`
 - Dynamic job facets for titles, locations, skills and work modes
 - Security headers, health endpoint, sitemap and robots metadata
 - Privacy Policy and Terms launch-draft pages
-- GitHub Actions production-dependency audit, regression tests, Next.js build and Cloudflare/OpenNext build
+- GitHub Actions dependency audit, regression tests, Next.js build and Cloudflare/OpenNext build
+- Automatic verified production deployment to Cloudflare Workers after a green `main` build
+
+## Live jobs
+
+The free no-key live-job pipeline is active in production through a Supabase Edge Function and Supabase Cron.
+
+Currently enabled no-key sources:
+
+- Jobicy
+- Remotive
+- Himalayas
+- Remote OK
+- Arbeitnow (India-location filter; may legitimately return zero India roles on a given refresh)
+
+The refresh runs daily, normalizes provider data, keeps only India-eligible roles, deduplicates on `(source, external_id)`, marks old records inactive, preserves external application URLs, and writes an internal refresh audit record.
+
+Additional free-account connectors are prepared and remain dormant until their server-side keys are configured:
+
+- IndianAPI
+- Jooble
+- TheirStack
+
+Adzuna remains separately gated. Its adapter and preview/import path exist, but persisted publishing must remain disabled until credentials, provider/commercial approval and required attribution are confirmed.
+
+Production refresh implementation:
+
+- `supabase/functions/refresh-free-jobs/index.ts`
+- `supabase/migrations/20260815012000_add_free_job_refresh_infrastructure.sql`
+- `supabase/migrations/20260815012600_lock_refresh_internal_tables.sql`
+- `supabase/migrations/20260815012800_schedule_free_job_refresh.sql`
+
+The Edge Function uses server-only Supabase credentials supplied by the Supabase runtime. No service-role key is committed to GitHub or exposed to the browser.
 
 ## Tech stack
 
@@ -36,9 +64,9 @@ Implemented and build-verified:
 - React 19
 - TypeScript
 - Tailwind CSS
-- Supabase (Auth, PostgreSQL, Storage)
-- Cloudflare Workers / OpenNext deployment target
-- GitHub Actions CI
+- Supabase (Auth, PostgreSQL, Storage, Edge Functions, Cron)
+- Cloudflare Workers / OpenNext
+- GitHub Actions CI/CD
 
 ## Local development
 
@@ -57,29 +85,26 @@ npm test
 
 ## Environment variables
 
-See `.env.example` for required variables. Server-only secrets must never use the `NEXT_PUBLIC_` prefix.
+See `.env.example` for optional provider/deployment variables. Server-only secrets must never use the `NEXT_PUBLIC_` prefix.
 
-## Live job imports
+The active no-key Supabase refresh does not require Cloudflare to hold the Supabase service-role key.
 
-Persistent live imports are intentionally disabled until production credentials, provider publication requirements and attribution checks are complete. Current sample roles remain clearly separated from future provider listings.
+Free-account Edge Function secrets, when obtained, use these names:
 
-Required server-side configuration for Adzuna access/publishing:
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `JOB_IMPORT_SECRET`
-- `ADZUNA_APP_ID`
-- `ADZUNA_APP_KEY`
-- `ADZUNA_PUBLISHING_READY` (keep `false` until publication requirements are complete)
-- `NEXT_PUBLIC_SITE_URL`
-
-The protected import endpoint supports previewing normalized provider data before any row is persisted. The GitHub refresh workflow is deliberately `workflow_dispatch`-only until a controlled production preview/import is approved; re-enable a schedule only after that verification.
+```text
+INDIANAPI_JOBS_API_KEY
+JOOBLE_API_KEY
+THEIRSTACK_API_KEY
+```
 
 ## Cloudflare / Next.js compatibility note
 
-Next.js 16 deprecates the `middleware.ts` filename in favor of `proxy.ts`, but the currently pinned `@opennextjs/cloudflare` deployment path rejects the `proxy.ts` output as unsupported Node.js middleware. JobCraft therefore intentionally retains the working `middleware.ts` entrypoint for Cloudflare compatibility. CI verifies the OpenNext build, and this exception should be revisited when the adapter supports the Next.js proxy path without breaking deployment.
+Next.js 16 deprecates the `middleware.ts` filename in favor of `proxy.ts`, but the currently pinned `@opennextjs/cloudflare` deployment path rejects the `proxy.ts` output as unsupported Node.js middleware. JobCraft therefore intentionally retains the working `middleware.ts` entrypoint for Cloudflare compatibility. CI verifies the OpenNext build; revisit this when the adapter supports the proxy path without breaking deployment.
 
 ## Launch status
 
-The application code is in launch-preparation state. The remaining blockers are primarily external account/business configuration: live job-provider credentials and publication requirements, deployment/GitHub secrets, a final production domain, Supabase auth hardening that depends on plan/settings, and final legal/business identity details.
+The core non-AI MVP and free live-job pipeline are running on the existing Cloudflare Workers HTTPS origin. Buying a custom domain is intentionally deferred and is not required for current development/testing.
 
-See `LAUNCH_CHECKLIST.md` for the remaining production-launch steps.
+Remaining blockers are external decisions/accounts rather than core code: optional free provider keys, Adzuna approval/credentials if used, final business/legal identity and support/privacy contact details, final legal review, and later custom-domain configuration.
+
+See `LAUNCH_CHECKLIST.md` for the remaining user-dependent launch items.
