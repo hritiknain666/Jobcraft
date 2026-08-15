@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { jobFreshnessCutoff } from "./freshness";
 
 export type JobFacets = {
   titles: string[];
@@ -14,19 +13,19 @@ const uniqueSorted = (values: string[]) =>
 export async function getJobFacets(supabase: SupabaseClient): Promise<JobFacets> {
   const { data, error } = await supabase
     .from("jobs")
-    .select("title,location,skills,work_mode")
+    .select("title,location_normalized,skills,work_mode")
     .eq("is_active", true)
+    .is("duplicate_of", null)
     .neq("source", "JobCraft")
-    .gte("posted_at", jobFreshnessCutoff())
     .order("posted_at", { ascending: false })
-    .limit(1000);
+    .limit(2000);
 
   if (error) throw error;
   const jobs = data ?? [];
 
   return {
     titles: uniqueSorted(jobs.map((job) => String(job.title ?? ""))),
-    locations: uniqueSorted(jobs.map((job) => String(job.location ?? ""))),
+    locations: uniqueSorted(jobs.map((job) => String(job.location_normalized ?? ""))),
     skills: uniqueSorted(jobs.flatMap((job) => Array.isArray(job.skills) ? job.skills.map(String) : [])),
     workModes: uniqueSorted(jobs.map((job) => String(job.work_mode ?? ""))),
   };
