@@ -1,8 +1,9 @@
-name: Refresh live jobs
+name: Manual provider refresh fallback
 
-# Keep refreshes manual until the first production refresh is verified. Once the
-# same JOB_IMPORT_SECRET exists in Cloudflare and GitHub Actions, this workflow
-# calls one protected server endpoint that refreshes every enabled free source.
+# Primary zero-cost refresh runs from Supabase Cron via the refresh-free-jobs
+# Edge Function. Keep this workflow as a manual fallback for the Next.js
+# provider pipeline (Adzuna, curated ATS sources, or free-key providers) after
+# JOB_IMPORT_SECRET and server-side database credentials are deliberately set.
 on:
   workflow_dispatch:
 
@@ -15,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Refresh enabled free job sources
+      - name: Refresh enabled server-side job sources
         env:
           SITE_URL: ${{ vars.JOBCRAFT_SITE_URL }}
           IMPORT_SECRET: ${{ secrets.JOB_IMPORT_SECRET }}
@@ -27,14 +28,14 @@ jobs:
           SITE_URL="${SITE_URL%/}"
 
           if [ -z "${IMPORT_SECRET}" ]; then
-            echo "::error::JOB_IMPORT_SECRET is not configured in GitHub Actions."
+            echo "::error::JOB_IMPORT_SECRET is not configured in GitHub Actions. Use Supabase Cron for the primary free feeds."
             exit 1
           fi
 
           STATUS="$(curl --fail --silent --show-error "${SITE_URL}/api/jobs/provider-status")"
           SERVER_READY="$(STATUS_JSON="${STATUS}" node -e 'const s=JSON.parse(process.env.STATUS_JSON); process.stdout.write(s?.server?.importSecretReady && s?.server?.databaseWriteReady ? "yes" : "no")')"
           if [ "${SERVER_READY}" != "yes" ]; then
-            echo "::error::The deployed JobCraft server is missing JOB_IMPORT_SECRET or SUPABASE_SERVICE_ROLE_KEY."
+            echo "::error::The deployed Next.js provider pipeline is not configured for manual imports."
             exit 1
           fi
 
@@ -48,5 +49,5 @@ jobs:
           echo "Refresh result: ${RESPONSE}"
           FAILURES="$(RESULT_JSON="${RESPONSE}" node -e 'const r=JSON.parse(process.env.RESULT_JSON); process.stdout.write(String(r?.summary?.failed ?? 0))')"
           if [ "${FAILURES}" != "0" ]; then
-            echo "::warning::One or more free job providers failed; successful providers were still persisted."
+            echo "::warning::One or more providers failed; successful providers were still persisted."
           fi
