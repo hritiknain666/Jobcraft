@@ -1,88 +1,107 @@
 # JobCraft Production Launch Checklist
 
-This file tracks only the remaining production-launch items that require external credentials, account configuration, provider approval, or final legal/business details. Code-side launch hardening completed on 14 August 2026 is recorded separately below.
+This checklist now tracks only work that is still external, account-dependent, or intentionally deferred. The core non-AI MVP and no-key free live-job pipeline are already running on the Cloudflare Workers HTTPS origin.
 
-## 1. Live job provider
+## 1. Free live-job sources
+
+Completed:
+
+- [x] Daily Supabase Cron refresh installed
+- [x] Supabase Edge Function deployed for free-source ingestion
+- [x] Jobicy live import verified
+- [x] Remotive live import verified
+- [x] Himalayas live import verified
+- [x] Remote OK live import verified
+- [x] Arbeitnow connector enabled with India-location filtering
+- [x] `(source, external_id)` deduplication enforced
+- [x] External application URLs retained
+- [x] Stale external roles older than the freshness window are removed from active search
+- [x] Internal refresh authorization/audit tables have RLS enabled with no browser/client access
+- [x] Provider attribution is visible on supported external listings
+
+Optional free-account sources still requiring user-created keys:
+
+- [ ] Create IndianAPI account/key and store as `INDIANAPI_JOBS_API_KEY` in Supabase Edge Function secrets
+- [ ] Create Jooble API key and store as `JOOBLE_API_KEY`
+- [ ] Create TheirStack free API key and store as `THEIRSTACK_API_KEY`
+- [ ] Trigger/observe the next refresh and verify each newly enabled provider before relying on it
+
+## 2. Adzuna (optional additional provider)
 
 - [ ] Create/confirm Adzuna developer account
 - [ ] Obtain `ADZUNA_APP_ID`
 - [ ] Obtain `ADZUNA_APP_KEY`
-- [ ] Add both as server-only deployment secrets
-- [ ] Use the protected import endpoint with `"preview": true` and verify real India provider fields without writing jobs
-- [ ] Add/confirm the official required "Jobs by Adzuna" attribution/logo treatment for every displayed Adzuna advert
-- [ ] Confirm the intended JobCraft use is permitted under Adzuna's current API/commercial terms and whether an ongoing licence is required after any trial period
-- [ ] Only after those checks, set server-only `ADZUNA_PUBLISHING_READY=true`
-- [ ] Run a controlled first persisted import and verify source labels, external links and job details
-- [ ] Re-enable the scheduled GitHub refresh only after the controlled import passes
+- [ ] Preview real India data through the protected provider import path before persistence
+- [x] Adzuna attribution support exists in the UI
+- [ ] Confirm JobCraft's intended use is permitted under Adzuna's current commercial/publisher terms
+- [ ] Only after provider approval/requirements are satisfied, deliberately enable persisted publishing
+- [ ] Run a controlled first persisted Adzuna import and verify source labels, attribution and apply links
 
-## 2. Server-only import security
+Adzuna is not required for the current free-source MVP.
 
-- [ ] Obtain Supabase `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Generate a long random `JOB_IMPORT_SECRET`
-- [ ] Store `SUPABASE_SERVICE_ROLE_KEY` in the production deployment environment only
-- [ ] Store `JOB_IMPORT_SECRET` in the production deployment environment
-- [ ] Store the same `JOB_IMPORT_SECRET` in GitHub Actions
-- [ ] Confirm `/api/jobs/import` rejects missing/invalid authorization on the deployed production origin
+## 3. Production domain and HTTPS — intentionally deferred
 
-## 3. Production domain and HTTPS
+Current development/public testing continues on the existing Cloudflare Workers HTTPS origin.
+
+Later, when a custom domain is purchased:
 
 - [ ] Choose/buy the final JobCraft domain
-- [ ] Attach the domain to the Cloudflare Worker/custom domain route
-- [ ] Confirm the site opens with `https://` and a valid certificate
-- [ ] Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS origin
-- [ ] Set GitHub Actions `JOBCRAFT_SITE_URL` to the same origin
-- [ ] Confirm `/api/health`, `/robots.txt`, and `/sitemap.xml` work on the production domain
-
-Cloudflare handles normal public HTTPS traffic on port 443 once the custom domain is configured.
+- [ ] Attach it to the Cloudflare Worker/custom-domain route
+- [ ] Confirm HTTPS certificate/port 443 behavior
+- [ ] Update `NEXT_PUBLIC_SITE_URL`
+- [ ] Update Supabase Auth site/redirect configuration
+- [ ] Re-test `/api/health`, `/robots.txt`, `/sitemap.xml`, auth callback and password reset on the final domain
 
 ## 4. Supabase Auth production configuration
 
-- [ ] Add the production site origin to Supabase Auth URL configuration
-- [ ] Allow the production `/auth/callback` redirect URL
-- [x] Signup → email confirmation → login flow observed successfully on the Worker during production testing
-- [x] Authenticated session refresh and logout observed successfully on the Worker
-- [ ] Test forgot-password email and password update end-to-end on the final production domain
+Already verified on the Workers origin:
+
+- [x] Signup → email confirmation → login
+- [x] Authenticated session refresh
+- [x] Logout
+
+Remaining external/plan-dependent items:
+
+- [ ] Re-test forgot-password email and password update before a broad public launch
+- [ ] Confirm production email delivery/rate capacity is appropriate for expected traffic
 - [ ] Enable Supabase leaked-password protection if/when the selected Supabase plan supports it
-- [ ] Confirm production email delivery/rate capacity is appropriate before broad public launch
+
+Supabase's current security advisor reports only the leaked-password-protection warning; no new RLS exposure was introduced by the refresh infrastructure.
 
 ## 5. Legal and support details
 
-- [ ] Provide the responsible business/legal name
+Requires user/business decisions and final legal review:
+
+- [ ] Provide responsible business/legal/operator name
 - [ ] Provide official support/privacy contact email
-- [ ] Replace the pre-launch notice in `/privacy` with final reviewed policy text
-- [ ] Replace the pre-launch notice in `/terms` with final reviewed terms
-- [ ] Add governing-law/jurisdiction and required India-specific disclosures after legal review
+- [ ] Replace pre-launch wording in `/privacy` with final reviewed policy text
+- [ ] Replace pre-launch wording in `/terms` with final reviewed terms
+- [ ] Add final governing-law/jurisdiction and India-specific disclosures after legal review
 
-## 6. Final pre-launch test
+## 6. Final pre-launch verification
 
-- [x] GitHub Actions regression tests, Next.js build and Cloudflare/OpenNext build are green on the release candidate
-- [x] Verified release candidate merged to `main`; the same regression, Next.js and Cloudflare/OpenNext CI suite passed on `main`
-- [ ] Homepage/mobile navigation smoke test on the final domain
-- [ ] Auth + password reset smoke test on the final domain
-- [ ] Profile and certificate ownership smoke test on the final domain
-- [ ] Jobs search/filter smoke test for title, location, skill, mode, salary and experience using real provider data
-- [ ] Smart match consistency test on Jobs list and Job Details using real provider data
-- [x] Sample jobs remain explicitly labeled as sample roles in code
-- [ ] Confirm imported provider jobs show source/live labels, required provider attribution and valid external application links
-- [x] Duplicate live imports are guarded by `(source, external_id)` and import-batch duplicate validation
-- [x] Search/facets hide jobs older than the 45-day freshness window
-- [ ] Confirm Privacy and Terms links and final text on the final domain
+Completed/currently automated:
 
-## Code-side hardening completed 14 August 2026
+- [x] Production dependency audit
+- [x] Core regression tests
+- [x] Next.js production build
+- [x] Cloudflare/OpenNext production build
+- [x] Automatic deployment of a verified green `main` build to Cloudflare Workers
+- [x] Sample jobs explicitly labeled as samples
+- [x] Live-job provider/source labels and application links
+- [x] Database duplicate check for provider identities
+- [x] No active external job is missing an application URL in the current dataset
+- [x] No active external job is older than the freshness window in the current dataset
 
-- [x] Provider work mode and minimum experience can be `NULL` instead of being invented as `On-site` / `0`
-- [x] Production Supabase migration `20260814094835_allow_unknown_job_metadata` applied and verified
-- [x] Bootstrap schema synced to the production metadata model
-- [x] Match scoring uses only known signals and exposes evidence coverage/confidence
-- [x] Skill search can fall back to provider title/description text when no structured skill array is supplied
-- [x] Job result pagination added with a 24-job page size
-- [x] 45-day freshness filter added to job results and dynamic facets
-- [x] Profile experience/work-mode inputs hardened server-side
-- [x] Core normalization/matching regression tests added using Node's built-in test runner
-- [x] CI now runs production dependency audit + regression tests + Next.js build + OpenNext build
-- [x] Refresh workflow changed to manual-only until provider credentials/publication checks are ready, preventing false-green scheduled imports
-- [x] Next.js `proxy.ts` migration was tested and intentionally reverted because the current OpenNext Cloudflare build rejects it; keep `middleware.ts` until the adapter path is compatible
+Still worth repeating immediately before broad public promotion:
+
+- [ ] Mobile navigation smoke test across major routes
+- [ ] Auth/password-reset smoke test
+- [ ] Profile/resume/certificate ownership smoke test
+- [ ] Jobs filters: title, location, skill, work mode, salary and experience
+- [ ] Match consistency between Jobs list and Job Details
+- [ ] Privacy/Terms final-text check
 
 ## Launch rule
 
-Do not present provider vacancies as live until the provider credentials are configured, a protected preview has been manually verified, required attribution/commercial-use requirements are satisfied, and `ADZUNA_PUBLISHING_READY=true` has been deliberately set. Do not expose service-role keys, provider keys, or import secrets to browser code or GitHub source files.
+Never expose service-role keys, provider keys, refresh secrets or other server credentials to browser code or GitHub source files. New providers must keep their source attribution and external application link, and any provider-specific commercial/publisher requirements must be satisfied before their listings are presented as live.
