@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch, getJobMatchLabel, getMatchConfidenceLabel } from "@/lib/job-match";
+import { getProviderAttribution } from "@/lib/job-sources/attribution";
 import { createTailoredResume } from "@/app/resume/tailor/actions";
 import { saveApplication } from "@/app/applications/actions";
 import { createCoverLetter } from "@/app/cover-letter/actions";
@@ -43,8 +44,8 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
   const source = String(job.source ?? "").trim();
   const isSample = source === "JobCraft";
-  const isAdzuna = source.toLowerCase() === "adzuna";
   const sourceLabel = source || "External provider";
+  const attribution = getProviderAttribution(job.source, job.apply_url);
   const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
   const experienceLabel = job.experience_min !== null && job.experience_min !== undefined ? `${job.experience_min}${job.experience_max !== null && job.experience_max !== undefined ? `–${job.experience_max}` : "+"} yrs` : "Experience not listed";
 
@@ -81,7 +82,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
               <article className="jc-card jc-tool-panel"><p className="jc-eyebrow">RESUME FOR THIS ROLE</p><h2 className="jc-section-title">Bring the right evidence forward.</h2><p className="jc-section-subtitle">Keep the facts the same. Change only the emphasis.</p>{resumes.length ? <form action={createTailoredResume} className="mt-4 grid gap-3"><input type="hidden" name="jobId" value={job.id} /><select name="resumeId" className="jc-input">{resumes.map((resume) => <option key={resume.id} value={resume.id}>{resume.name}{resume.is_primary ? " (Primary)" : ""}</option>)}</select><button className="jc-button-primary">Create role version →</button></form> : <Link href="/resume" className="jc-button-primary mt-4 w-full">Add a resume first →</Link>}</article>
             </> : <article className="jc-dark-card jc-tool-panel"><p className="jc-eyebrow !text-[#f49a48]">SEE YOUR FIT</p><h2 className="jc-section-title !text-white">Know before you apply.</h2><p className="mt-3 text-sm leading-6 text-[#a4b9b1]">Create your profile to see matched skills, gaps and evidence coverage.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="mt-5 block rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-center text-sm font-black text-[#173f33]">Get started →</Link></article>}
 
-            <article className={`jc-card p-5 ${isSample ? "!bg-[#fbf0df]" : "!bg-[#e9f4ed]"}`}><p className={`jc-eyebrow ${isSample ? "!text-[#b86e2d]" : ""}`}>{isSample ? "PROTOTYPE NOTICE" : "JOB SOURCE"}</p><p className="mt-3 text-xs leading-6 text-[#5f786f]">{isSample ? "This is a JobCraft sample listing for testing search and matching. It is not presented as a live employer vacancy." : `This listing was supplied by ${sourceLabel}. Verify availability and application details on the provider page before applying.`}</p>{isAdzuna ? <a href="https://www.adzuna.in/" target="_blank" rel="noreferrer" className="jc-text-link mt-3 inline-block">Jobs by Adzuna ↗</a> : null}</article>
+            <article className={`jc-card p-5 ${isSample ? "!bg-[#fbf0df]" : "!bg-[#e9f4ed]"}`}><p className={`jc-eyebrow ${isSample ? "!text-[#b86e2d]" : ""}`}>{isSample ? "PROTOTYPE NOTICE" : "JOB SOURCE"}</p><p className="mt-3 text-xs leading-6 text-[#5f786f]">{isSample ? "This is a JobCraft sample listing for testing search and matching. It is not presented as a live employer vacancy." : `This listing was supplied by ${sourceLabel}. Verify availability and application details on the provider page before applying.`}</p>{attribution?.href ? <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="jc-text-link mt-3 inline-block">{attribution.label} ↗</a> : null}</article>
           </aside>
         </section>
 
