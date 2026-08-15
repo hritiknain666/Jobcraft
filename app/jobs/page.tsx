@@ -2,6 +2,7 @@ import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobsListMatch, type JobsListProfile } from "@/lib/jobs-list-match";
+import { getProviderAttribution } from "@/lib/job-sources/attribution";
 import { getJobFacets, type JobFacets } from "@/lib/job-sources/facets";
 import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
 
@@ -131,20 +132,28 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           {pageJobs.map((job: any) => {
             const match = calculateJobsListMatch(job, profile);
             const sample = job.source === "JobCraft";
+            const attribution = getProviderAttribution(job.source, job.apply_url);
             return (
-              <Link key={job.id} href={`/jobs/${job.id}`} className="jc-card jc-job-card">
-                <div className="jc-job-card-top">
-                  <span className="jc-company-square">{companyInitials(job.company)}</span>
-                  <span className="jc-bookmark" aria-hidden="true">⌑</span>
-                </div>
-                <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#f6dfc6] px-2 py-1 text-[9px] normal-case tracking-normal text-[#6a543a]">{sample ? "Sample role" : "Live role"}</span></div>
-                <h2 className="jc-job-title">{job.title}</h2>
-                <p className="jc-job-details">⌖ {job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
-                <div className="jc-job-card-footer">
-                  <div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div>
-                  <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source || "JobCraft"}</div>
-                </div>
-              </Link>
+              <article key={job.id} className="jc-card jc-job-card">
+                <Link href={`/jobs/${job.id}`} className="flex flex-1 flex-col text-inherit no-underline">
+                  <div className="jc-job-card-top">
+                    <span className="jc-company-square">{companyInitials(job.company)}</span>
+                    <span className="jc-bookmark" aria-hidden="true">⌑</span>
+                  </div>
+                  <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#f6dfc6] px-2 py-1 text-[9px] normal-case tracking-normal text-[#6a543a]">{sample ? "Sample role" : "Live role"}</span></div>
+                  <h2 className="jc-job-title">{job.title}</h2>
+                  <p className="jc-job-details">⌖ {job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
+                  <div className="jc-job-card-footer">
+                    <div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div>
+                    <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source || "JobCraft"}</div>
+                  </div>
+                </Link>
+                {attribution?.href ? (
+                  <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-fit text-[10px] font-extrabold uppercase tracking-[.08em] text-[#5f786f] no-underline hover:text-[#173f33]">
+                    {attribution.label} ↗
+                  </a>
+                ) : null}
+              </article>
             );
           })}
         </section>
