@@ -8,10 +8,16 @@ import { createTailoredResume } from "@/app/resume/tailor/actions";
 import { saveApplication } from "@/app/applications/actions";
 import { createCoverLetter } from "@/app/cover-letter/actions";
 
-export default async function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function JobDetailsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ apply?: string }> }) {
+  const [{ id }, queryParams] = await Promise.all([params, searchParams]);
   const supabase = await createClient();
-  const { data: job } = await supabase.from("jobs").select("*").eq("id", id).maybeSingle();
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("id", id)
+    .eq("is_active", true)
+    .is("duplicate_of", null)
+    .maybeSingle();
   if (!job) notFound();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -30,16 +36,9 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
   }
 
   const match = calculateJobMatch({
-    jobSkills: job.skills ?? [],
-    userSkills: profile?.skills ?? [],
-    jobMinExperience: job.experience_min,
-    userExperience: profile?.experience_years,
-    jobLocation: job.location,
-    userCity: profile?.city,
-    jobWorkMode: job.work_mode,
-    preferredWorkModes: profile?.preferred_work_modes ?? [],
-    targetRoles: profile?.target_roles ?? [],
-    jobTitle: job.title,
+    jobSkills: job.skills ?? [], userSkills: profile?.skills ?? [], jobMinExperience: job.experience_min,
+    userExperience: profile?.experience_years, jobLocation: job.location_normalized || job.location, userCity: profile?.city,
+    jobWorkMode: job.work_mode, preferredWorkModes: profile?.preferred_work_modes ?? [], targetRoles: profile?.target_roles ?? [], jobTitle: job.title,
   });
 
   const source = String(job.source ?? "").trim();
@@ -53,13 +52,14 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
     <WorkspaceShell active="jobs" authenticated={Boolean(user)} name={profile?.full_name} headline={profile?.headline} strength={strength}>
       <div className="jc-content-wrap">
         <div className="mb-5"><Link href="/jobs" className="jc-text-link">← Back to discover roles</Link></div>
+        {queryParams.apply === "unavailable" ? <div className="jc-card mb-5 border border-[#e6c8a5] !bg-[#fbf0df] p-4 text-sm font-bold text-[#795939]">That external application link is no longer available. The listing will be removed from the live feed if its provider also reports it closed.</div> : null}
 
         <section className="jc-card p-7 sm:p-9">
           <div className="grid gap-8 xl:grid-cols-[1fr_300px] xl:items-start">
             <div>
               <div className="flex flex-wrap items-center gap-4"><span className="jc-company-square">{companyInitials(job.company)}</span><div><div className="flex flex-wrap items-center gap-2"><p className="jc-eyebrow !text-[10px]">{job.company}</p><span className={`rounded-full px-3 py-1 text-[9px] font-black ${isSample ? "bg-[#f7e0c7] text-[#795939]" : "bg-[#e4f0e9] text-[#278363]"}`}>{isSample ? "SAMPLE ROLE" : `LIVE · ${sourceLabel}`}</span></div><p className="mt-2 text-xs text-[#789087]">{isSample ? "JobCraft prototype listing" : `Listing supplied by ${sourceLabel}`}</p></div></div>
               <h1 className="jc-page-title mt-7 !text-[clamp(2.7rem,5vw,4.8rem)]">{job.title}</h1>
-              <div className="mt-6 flex flex-wrap gap-2"><span className="jc-chip">⌖ {job.location || "India"}</span><span className="jc-chip">{job.work_mode || "Work mode not listed"}</span><span className="jc-chip">{salaryText(job.salary_min_lpa, job.salary_max_lpa)}</span><span className="jc-chip">{experienceLabel}</span></div>
+              <div className="mt-6 flex flex-wrap gap-2"><span className="jc-chip">⌖ {job.location_normalized || job.location || "India"}</span><span className="jc-chip">{job.work_mode || "Work mode not listed"}</span><span className="jc-chip">{salaryText(job.salary_min_lpa, job.salary_max_lpa)}</span><span className="jc-chip">{experienceLabel}</span></div>
             </div>
 
             {user ? <article className="rounded-[20px] bg-[#efede7] p-5"><div className="flex items-end justify-between gap-4"><div><p className="jc-eyebrow !text-[9px]">YOUR MATCH</p><b className="mt-2 block text-sm">{getJobMatchLabel(match.score, match.confidence)}</b></div><span className="jc-serif text-4xl text-[#278363]">{match.score}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#d9ded8]"><div className="h-full rounded-full bg-[#278363]" style={{ width: `${match.score}%` }} /></div><p className="mt-3 text-[10px] font-bold uppercase tracking-[.08em] text-[#789087]">{getMatchConfidenceLabel(match.confidence)} · {Math.round(match.evidenceCoverage * 100)}% evidence</p><p className="mt-2 text-[11px] leading-5 text-[#789087]">Only known job fields and your saved profile contribute to this score.</p></article> : <article className="rounded-[20px] bg-[#efede7] p-5"><p className="jc-eyebrow !text-[9px]">UNLOCK YOUR FIT</p><h2 className="jc-section-title !mt-3 !text-[21px]">See matched skills and gaps.</h2><p className="jc-section-subtitle">Build your career signal before deciding whether a role is worth your time.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="jc-button-primary mt-4 w-full">Create profile →</Link></article>}
@@ -86,7 +86,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
           </aside>
         </section>
 
-        <section className="jc-card mt-6 flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center"><div><b className="text-sm">Ready to continue?</b><p className="mt-1 text-xs text-[#789087]">{isSample ? "Sample roles are for testing; use live provider listings for real applications." : `Review the ${sourceLabel} listing before submitting anything.`}</p></div>{job.apply_url ? <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="jc-button-primary">View / apply via {sourceLabel} ↗</a> : <span className="jc-button-secondary opacity-50">Application link unavailable</span>}</section>
+        <section className="jc-card mt-6 flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center"><div><b className="text-sm">Ready to continue?</b><p className="mt-1 text-xs text-[#789087]">{isSample ? "Sample roles are for testing; use live provider listings for real applications." : `Review the ${sourceLabel} listing before submitting anything.`}</p></div>{job.apply_url && !isSample ? <a href={`/api/jobs/${job.id}/apply`} target="_blank" rel="noopener noreferrer" className="jc-button-primary">View / apply via {sourceLabel} ↗</a> : <span className="jc-button-secondary opacity-50">Application link unavailable</span>}</section>
       </div>
     </WorkspaceShell>
   );
