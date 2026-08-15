@@ -1,79 +1,99 @@
 # JobCraft live-job refresh
 
-JobCraft's zero-cost MVP refreshes free/public job feeds from a Supabase Edge Function and stores normalized jobs in `public.jobs`.
+JobCraft's non-AI MVP refreshes approved/public job feeds from Supabase Edge Functions and stores normalized jobs in `public.jobs`.
 
 ## Production design
 
-- Edge Function: `refresh-free-jobs`
-- Scheduler: Supabase Cron (`pg_cron` + `pg_net`)
-- Production schedule: once daily at `02:17 UTC`
-- Auth: a random cron token is stored in Supabase Vault; only its SHA-256 digest is stored in `public.job_refresh_auth`
-- Audit: every run is recorded in `public.job_refresh_runs`
-- Write access: the Edge Function uses Supabase's server-provided service credentials. Client roles have no access to the refresh auth/audit tables.
-- Deduplication: jobs are upserted on `(source, external_id)`
-- Staleness: supported feed jobs older than 45 days are marked inactive
+Two authenticated Edge Functions share the same Supabase Cron/Vault infrastructure:
 
-## Sources that work without an API key
+- `refresh-free-jobs` — six general sources, daily at `02:17 UTC`.
+- `refresh-ats-jobs` — curated Greenhouse/Lever employer snapshots plus gated Adzuna, daily at `02:25 UTC`.
+- `jobcraft-feed-maintenance-daily` — quality, dedupe and source-health maintenance at `02:35 UTC`.
 
-The production Edge Function can ingest:
+Authentication uses a long random cron token stored in Supabase Vault; only its SHA-256 digest is stored in `public.job_refresh_auth`. Every refresh is audited in `public.job_refresh_runs`. Client roles cannot read the refresh auth/audit internals.
+
+## General source refresh
+
+`refresh-free-jobs` is intentionally limited to:
 
 - Remotive
 - Jobicy
 - Himalayas
 - Remote OK
-- Arbeitnow
+- IndianAPI when `INDIANAPI_JOBS_API_KEY` exists
+- TheirStack when `THEIRSTACK_API_KEY` exists
 
-Only listings that are explicitly India-eligible or globally eligible are stored. Provider attribution is kept visible in JobCraft.
+Jooble and Arbeitnow are not part of the normal production schedule.
 
-## Optional free-account sources
+TheirStack remains capped at five returned India jobs per daily call while JobCraft is using the limited free credit allowance. The query uses a recent discovery window to avoid deliberately re-requesting old inventory.
 
-These providers are automatically included when their Edge Function secret exists:
+## Direct employer refresh
 
-- `INDIANAPI_JOBS_API_KEY`
-- `JOOBLE_API_KEY`
-- `THEIRSTACK_API_KEY`
+`refresh-ats-jobs` currently polls:
 
-TheirStack is intentionally queried conservatively to protect the small free monthly credit allowance.
+- Greenhouse: PhonePe
+- Lever: Hevo Data
+- Lever: Acceldata
+- Lever: Level AI
 
-Adzuna remains handled by the separate provider pipeline because persisted Adzuna publishing must stay locked until commercial/publisher approval and the required attribution treatment are verified.
+These are full public employer snapshots. Each external ID is namespaced by board/site. If a posting disappears from a successful snapshot, prior JobCraft rows for that employer feed are deactivated.
 
-Greenhouse and Lever adapters are also available in the Next.js provider pipeline. They require curated employer board/site identifiers rather than a global API key.
+Adzuna lives in the same function but remains disabled until all four requirements are present:
+
+- `ADZUNA_APP_ID`
+- `ADZUNA_APP_KEY`
+- `ADZUNA_PUBLISHING_READY=true`
+- `ADZUNA_ATTRIBUTION_READY=true`
+
+Do not enable the readiness flags merely because credentials exist. Provider/commercial approval and the required attribution treatment must be confirmed first.
+
+## Quality layer
+
+Before a third-party job can remain active it must have:
+
+- a meaningful description
+- a valid public HTTP(S) application URL
+- a provider/external ID pair
+
+The database trigger derives:
+
+- canonical title/company
+- normalized India location
+- canonical application/job fingerprint
+- weighted full-text `search_document`
+
+Greenhouse posting IDs and Lever site/posting IDs are recognized across alternate/embedded URLs. This lets direct employer records replace proven aggregator copies without broad fuzzy deduplication.
+
+Aggregated listings age out from provider posting dates. Greenhouse/Lever freshness is driven by successful full snapshots instead of an arbitrary age cutoff.
+
+## Health monitoring
+
+`public.job_source_health` records per-source/per-employer operational state:
+
+- health status
+- last run / last success
+- fetched and upserted counts
+- active job count
+- consecutive failures
+- internal last error
+
+The public API route `/api/jobs/provider-status` exposes only sanitized fields through `public.get_job_source_health()`; it never exposes API keys, Vault values or service credentials.
 
 ## Provisioning a new environment
 
 Never commit runtime tokens or API keys.
 
-1. Generate a long random token, for example with a secure password generator or `openssl rand -base64 48`.
+1. Generate a long random cron token.
 2. Store `SHA-256(token)` in the singleton row of `public.job_refresh_auth`.
 3. Store the raw token in Supabase Vault as `jobcraft_job_refresh_secret`.
 4. Store the project URL in Vault as `jobcraft_project_url`.
-5. Deploy `supabase/functions/refresh-free-jobs/index.ts` with custom auth (`verify_jwt = false`). The function validates the private cron header itself.
-6. Schedule the function with Supabase Cron. The production cadence is intentionally once daily to avoid unnecessary requests to free providers.
-7. Add optional provider keys through Supabase Edge Function Secrets, never through the browser bundle or repository.
-
-Example scheduling SQL (replace nothing with literal secrets; read them from Vault):
-
-```sql
-select cron.schedule(
-  'jobcraft-free-jobs-daily',
-  '17 2 * * *',
-  $$
-    select net.http_post(
-      url := (select decrypted_secret from vault.decrypted_secrets where name = 'jobcraft_project_url') || '/functions/v1/refresh-free-jobs',
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'x-jobcraft-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'jobcraft_job_refresh_secret')
-      ),
-      body := jsonb_build_object('trigger', 'supabase-cron', 'requested_at', now()),
-      timeout_milliseconds := 120000
-    );
-  $$
-);
-```
+5. Deploy both Edge Functions with `verify_jwt = false`; both validate the private `x-jobcraft-cron-secret` header themselves.
+6. Apply the migrations that schedule the daily jobs.
+7. Add provider API keys through Supabase Edge Function Secrets only.
 
 ## Verification
 
-Check recent runs:
+Recent refresh runs:
 
 ```sql
 select triggered_at, finished_at, status, summary, error
@@ -82,13 +102,25 @@ order by triggered_at desc
 limit 10;
 ```
 
-Check source inventory:
+Active, unique public inventory:
 
 ```sql
-select source, count(*) as jobs, count(*) filter (where is_active) as active_jobs
+select source, count(*) as active_unique
 from public.jobs
+where is_active = true
+  and duplicate_of is null
+  and source <> 'JobCraft'
 group by source
 order by source;
 ```
 
-A provider returning zero jobs is not automatically an error: the current feed may simply contain no India-eligible listings. Provider request failures are recorded in the run summary.
+Source health:
+
+```sql
+select source_key, display_name, status, last_success_at, active_jobs
+from public.job_source_health
+where enabled = true
+order by display_name;
+```
+
+A successful provider call can legitimately return zero India-eligible jobs. Transport/provider failures are different: they are captured in refresh summaries and source health.
