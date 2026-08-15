@@ -16,6 +16,15 @@ export function getProviderAttribution(source: string | null | undefined, applyU
   if (normalized === "remotive") {
     return { label: "Source: Remotive", href: applyUrl || "https://remotive.com/", requiredPerListing: true };
   }
+  if (normalized === "jobicy") {
+    return { label: "Source: Jobicy", href: applyUrl || "https://jobicy.com/", requiredPerListing: true };
+  }
+  if (normalized === "himalayas") {
+    return { label: "Source: Himalayas", href: applyUrl || "https://himalayas.app/", requiredPerListing: true };
+  }
+  if (normalized === "remote ok") {
+    return { label: "Source: Remote OK", href: applyUrl || "https://remoteok.com/", requiredPerListing: true };
+  }
   if (normalized === "jooble") {
     return { label: "Source: Jooble", href: applyUrl || "https://jooble.org/", requiredPerListing: false };
   }
