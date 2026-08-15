@@ -2,6 +2,19 @@
 
 This document is an engineering/compliance checklist for the non-AI MVP. It is not legal advice and does not replace provider terms.
 
+## MVP source set
+
+JobCraft's normal MVP source strategy is intentionally limited to six reliable sources:
+
+1. IndianAPI — India-focused aggregator; API key required and already configured in production.
+2. Himalayas — public remote-jobs feed with India eligibility filtering.
+3. Jobicy — public remote-jobs feed with India/worldwide eligibility filtering.
+4. Remotive — public remote-jobs API with provider attribution and backlink.
+5. Remote OK — public remote-jobs feed with conservative India/worldwide filtering.
+6. TheirStack — broad aggregator; API key required. While JobCraft is on the free plan, the scheduled query is capped at five jobs per daily refresh and uses `discovered_at_gte` so credits are not deliberately spent re-fetching old records.
+
+Other adapters may remain in the repository as tested backups, but they are not part of the normal MVP source set unless deliberately re-enabled after a coverage/compliance review. In particular, Jooble is not required for the MVP and Arbeitnow is not counted as a core India source while it produces no useful India inventory.
+
 ## Production principles
 
 - Only import from an official API/feed or a provider with explicit permission for JobCraft's use case.
@@ -14,7 +27,7 @@ This document is an engineering/compliance checklist for the non-AI MVP. It is n
 - Keep prototype/sample JobCraft records outside the active public vacancy feed.
 - Review provider terms again before adding ads, charging for access to listings, materially increasing refresh volume, syndicating listings elsewhere, or changing the application flow.
 
-## No-key sources currently enabled
+## Core no-key sources
 
 ### Remotive
 
@@ -58,32 +71,34 @@ Official site exposes both a Remote Jobs API and JSON feed: https://remoteok.com
 
 JobCraft implementation is deliberately conservative: visible source attribution, provider/application URL, India/worldwide eligibility filtering, and one refresh per day. Re-review Remote OK's then-current terms before increasing volume, monetizing provider data, or changing redistribution behavior.
 
-### Arbeitnow
+## Core keyed sources
 
-Official public job-board API: https://www.arbeitnow.com/blog/job-board-api
+### IndianAPI
 
-JobCraft currently keeps only explicitly India-located results. If a refresh contains no India-eligible jobs, nothing is persisted.
+Production secret: `INDIANAPI_JOBS_API_KEY` in Supabase Edge Function secrets.
 
-## Free-account sources prepared but dormant
+JobCraft keeps the provider identity, provider application URL and evidence-only normalization. Salary is not converted unless the source semantics are explicit enough to do so safely.
 
-These adapters remain disabled until the corresponding API key is added to the Supabase Edge Function secrets:
+### TheirStack
 
-- `INDIANAPI_JOBS_API_KEY`
-- `JOOBLE_API_KEY`
-- `THEIRSTACK_API_KEY`
+Production secret: `THEIRSTACK_API_KEY` in Supabase Edge Function secrets.
 
-TheirStack must remain low-volume while JobCraft uses its limited free monthly credit allowance.
+Free-plan operating guardrails:
+- India-only query.
+- Maximum five returned jobs per scheduled refresh.
+- Daily refresh only.
+- Use `discovered_at_gte` to focus on newly discovered records.
+- Do not add extra scheduled TheirStack calls while using the free credit allowance.
 
-## Adzuna
+## Standby connectors
 
-The connector exists, but persisted publishing remains locked until provider/commercial approval and the required Adzuna attribution are both verified. Do not bypass `ADZUNA_PUBLISHING_READY` or `ADZUNA_ATTRIBUTION_READY`.
-
-## ATS feeds
-
-Greenhouse and Lever adapters are available for curated employer feeds. Only add an employer board/site after confirming that it is the employer's public careers feed and that the resulting jobs are relevant to India. Do not bulk-discover or crawl arbitrary tenant identifiers.
+- Jooble remains available in code but is not required for the six-source MVP.
+- Arbeitnow remains available for future review but is not treated as a core India source while it yields no useful India results.
+- Greenhouse and Lever adapters remain available for curated employer feeds where we explicitly choose public employer boards.
+- Adzuna remains locked until provider/commercial approval and required attribution are both verified. Do not bypass `ADZUNA_PUBLISHING_READY` or `ADZUNA_ATTRIBUTION_READY`.
 
 ## Refresh architecture
 
-The production no-key refresh runs through the Supabase Edge Function `refresh-free-jobs` and Supabase Cron. It writes through the server-side Supabase secret, records each run in `job_refresh_runs`, deduplicates on `source, external_id`, and deactivates listings older than the freshness window.
+The production refresh runs through the Supabase Edge Function `refresh-free-jobs` and Supabase Cron. It writes through the server-side Supabase secret, records each run in `job_refresh_runs`, deduplicates on `source, external_id`, and deactivates listings older than the freshness window.
 
-The legacy/manual GitHub refresh workflow is a fallback for the Next.js importer; the Supabase scheduled refresh is the current production path for the no-key sources.
+The legacy/manual GitHub refresh workflow is a fallback for the Next.js importer; Supabase scheduled refresh is the current production path.
