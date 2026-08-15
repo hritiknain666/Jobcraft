@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { calculateJobsListMatch, type JobsListProfile } from "@/lib/jobs-list-match";
 import { getProviderAttribution } from "@/lib/job-sources/attribution";
 import { getJobFacets, type JobFacets } from "@/lib/job-sources/facets";
-import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
+import { normalizeLocationSearch } from "@/lib/job-sources/location-search";
 
 const EMPTY_FACETS: JobFacets = { titles: [], locations: [], skills: [], workModes: [] };
 const PAGE_SIZE = 24;
@@ -52,31 +52,34 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const facets = await getJobFacets(supabase).catch(() => EMPTY_FACETS);
   const searchTerm = safeSearchTerm(params.q);
   const skillTerm = safeSearchTerm(params.skill);
+  const locationTerm = normalizeLocationSearch(params.location);
   const experience = finiteNumber(params.experience);
   const salary = finiteNumber(params.salary);
   const page = positivePage(params.page);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
+  // Freshness is enforced in the ingestion layer: aggregator listings age out,
+  // while direct Greenhouse/Lever snapshots deactivate jobs when employers remove them.
   let query = supabase
     .from("jobs")
     .select("*", { count: "exact" })
     .eq("is_active", true)
-    .gte("posted_at", jobFreshnessCutoff())
+    .is("duplicate_of", null)
+    .neq("source", "JobCraft")
     .order("posted_at", { ascending: false });
 
-  if (searchTerm) query = query.or(`title.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-  if (params.location?.trim()) query = query.ilike("location", `%${safeSearchTerm(params.location)}%`);
+  if (searchTerm) query = query.textSearch("search_document", searchTerm, { type: "websearch", config: "simple" });
+  if (locationTerm) query = query.ilike("location_normalized", `%${locationTerm}%`);
   if (params.work_mode?.trim()) query = query.eq("work_mode", params.work_mode.trim().slice(0, 40));
   if (experience !== null) query = query.lte("experience_min", experience);
   if (salary !== null) query = query.gte("salary_max_lpa", salary);
-  if (skillTerm) query = query.or(`skills.cs.{"${skillTerm}"},title.ilike.%${skillTerm}%,description.ilike.%${skillTerm}%`);
+  if (skillTerm) query = query.textSearch("search_document", skillTerm, { type: "websearch", config: "simple" });
 
   const { data: jobs, error, count } = await query.range(from, to);
   const resultCount = count ?? jobs?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(resultCount / PAGE_SIZE));
   const pageJobs = jobs ?? [];
-  const liveCount = pageJobs.filter((job) => job.source !== "JobCraft").length;
   const profileStrength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
   return (
@@ -131,7 +134,6 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         <section className="jc-role-grid">
           {pageJobs.map((job: any) => {
             const match = calculateJobsListMatch(job, profile);
-            const sample = job.source === "JobCraft";
             const attribution = getProviderAttribution(job.source, job.apply_url);
             return (
               <article key={job.id} className="jc-card jc-job-card">
@@ -140,12 +142,12 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                     <span className="jc-company-square">{companyInitials(job.company)}</span>
                     <span className="jc-bookmark" aria-hidden="true">⌑</span>
                   </div>
-                  <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#f6dfc6] px-2 py-1 text-[9px] normal-case tracking-normal text-[#6a543a]">{sample ? "Sample role" : "Live role"}</span></div>
+                  <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#e4f0e9] px-2 py-1 text-[9px] normal-case tracking-normal text-[#278363]">Live role</span></div>
                   <h2 className="jc-job-title">{job.title}</h2>
-                  <p className="jc-job-details">⌖ {job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
+                  <p className="jc-job-details">⌖ {job.location_normalized || job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
                   <div className="jc-job-card-footer">
                     <div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div>
-                    <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source || "JobCraft"}</div>
+                    <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source}</div>
                   </div>
                 </Link>
                 {attribution?.href ? (
@@ -159,7 +161,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         </section>
 
         {!pageJobs.length && !error ? <div className="jc-card mt-5 p-12 text-center text-[#6f887f]">No roles matched. Try a wider search.</div> : null}
-        {liveCount > 0 ? <p className="mt-5 text-xs leading-6 text-[#789087]">Live vacancies retain their provider source and external application link. Always verify the provider listing before applying.</p> : null}
+        {pageJobs.length > 0 ? <p className="mt-5 text-xs leading-6 text-[#789087]">Live vacancies retain their provider source and external application link. Always verify the provider listing before applying.</p> : null}
 
         {totalPages > 1 && !error ? (
           <nav aria-label="Job result pages" className="jc-pagination">
