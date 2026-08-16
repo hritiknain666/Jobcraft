@@ -42,11 +42,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
   let profile: (JobsListProfile & { full_name?: string | null; headline?: string | null }) | null = null;
   if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name,headline,skills,experience_years,city,target_roles,preferred_work_modes")
-      .eq("id", user.id)
-      .maybeSingle();
+    const { data } = await supabase.from("profiles").select("full_name,headline,skills,experience_years,city,target_roles,preferred_work_modes").eq("id", user.id).maybeSingle();
     profile = data ?? null;
   }
 
@@ -60,14 +56,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  let query = supabase
-    .from("jobs")
-    .select("*", { count: "exact" })
-    .eq("is_active", true)
-    .is("duplicate_of", null)
-    .neq("source", "JobCraft")
-    .order("posted_at", { ascending: false });
-
+  let query = supabase.from("jobs").select("*", { count: "exact" }).eq("is_active", true).is("duplicate_of", null).neq("source", "JobCraft").order("posted_at", { ascending: false });
   if (searchTerm) query = query.textSearch("search_document", searchTerm, { type: "websearch", config: "simple" });
   if (locationTerm) query = query.ilike("location_normalized", `%${locationTerm}%`);
   if (params.work_mode?.trim()) query = query.eq("work_mode", params.work_mode.trim().slice(0, 40));
@@ -82,29 +71,28 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const trackedByJob = new Map<string, string>();
 
   if (user && pageJobs.length) {
-    const { data: tracked } = await supabase
-      .from("applications")
-      .select("job_id,status")
-      .eq("user_id", user.id)
-      .in("job_id", pageJobs.map((job: any) => job.id));
-    for (const item of tracked ?? []) {
-      if (item.job_id) trackedByJob.set(String(item.job_id), String(item.status ?? "Saved"));
-    }
+    const { data: tracked } = await supabase.from("applications").select("job_id,status").eq("user_id", user.id).in("job_id", pageJobs.map((job: any) => job.id));
+    for (const item of tracked ?? []) if (item.job_id) trackedByJob.set(String(item.job_id), String(item.status ?? "Saved"));
   }
 
   const profileStrength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
+  const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const newTodayCount = pageJobs.filter((job: any) => job.posted_at && new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(job.posted_at)) === todayKey).length;
+  const strongMatches = profile ? pageJobs.map((job: any) => calculateJobsListMatch(job, profile)).filter((match) => match && match.score >= 75).length : 0;
 
   return (
     <WorkspaceShell active="jobs" authenticated={Boolean(user)} name={profile?.full_name} headline={profile?.headline} strength={profileStrength}>
       <div className="jc-content-wrap">
-        <section className="jc-discover-head">
-          <div><p className="jc-eyebrow">THE OPPORTUNITY MAP</p><h1 className="jc-page-title">Discover roles</h1></div>
-          <a href="#job-filters" className="jc-button-secondary">☷ Filters⌄</a>
-        </section>
+        <section className="jc-discover-head"><div><p className="jc-eyebrow">THE OPPORTUNITY MAP</p><h1 className="jc-page-title">Discover roles</h1></div><a href="#job-filters" className="jc-button-secondary">☷ Filters⌄</a></section>
+
+        <div className="jc-card mb-5 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="jc-eyebrow">FRESH OPPORTUNITIES</p><p className="mt-2 text-sm font-bold text-[#173f33]"><span className="jc-serif text-2xl text-[#278363]">{newTodayCount}</span> new role{newTodayCount === 1 ? "" : "s"} today{profile ? <> · <span className="text-[#278363]">{strongMatches} strong match{strongMatches === 1 ? "" : "es"}</span> on this page</> : null}</p></div>
+          <span className="text-xs leading-5 text-[#789087]">Freshness uses India time and the current result page.</span>
+        </div>
 
         <form action="/jobs" className="jc-card jc-search-panel" id="job-filters">
           <div className="jc-search-row">
-            <label className="jc-search-field"><SearchIcon /><input name="q" defaultValue={params.q ?? ""} placeholder="Search title, skill, or company" aria-label="Search title, skill, or company" /></label>
+            <label className="jc-search-field"><SearchIcon /><input name="q" defaultValue={params.q ?? ""} placeholder="Search title, skill, company, or job description" aria-label="Search title, skill, company, or job description" /></label>
             <label className="jc-search-field"><LocationIcon /><input name="location" list="jc-locations" defaultValue={params.location ?? ""} placeholder="Location or city" aria-label="Location or city" /></label>
           </div>
           <datalist id="jc-locations">{facets.locations.slice(0, 80).map((location) => <option key={location} value={location} />)}</datalist>
@@ -137,9 +125,9 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                   <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#e4f0e9] px-2 py-1 text-[9px] normal-case tracking-normal text-[#278363]">Live role</span></div>
                   <h2 className="jc-job-title">{job.title}</h2>
                   <p className="jc-job-details">⌖ {job.location_normalized || job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
+                  {match ? <div className="mt-3 flex flex-wrap gap-2">{match.matchedSkills.slice(0,2).map((skill) => <span key={skill} className="jc-chip !bg-[#e9f4ed] !text-[#285844]">✓ {skill}</span>)}{match.missingSkills.slice(0,1).map((skill) => <span key={skill} className="jc-chip !bg-[#f8ead9] !text-[#76573b]">Gap · {skill}</span>)}</div> : null}
                   <div className="jc-job-card-footer"><div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div><div className="jc-job-age">{postedAge(job.posted_at)}</div></div>
                 </Link>
-
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   {user ? (trackedStatus ? <Link href="/applications" className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#278363] no-underline">{trackedStatus} ✓</Link> : <form action={saveApplication}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="status" value="Saved" /><button className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33]">Save role +</button></form>) : <Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33] no-underline">Save role +</Link>}
                   {attribution?.requiredPerListing && attribution.href ? <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="text-[9px] font-semibold text-[#8a9b95] no-underline">{attribution.label} ↗</a> : null}
@@ -151,37 +139,14 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
         {!pageJobs.length && !error ? <div className="jc-card mt-5 p-12 text-center text-[#6f887f]">No roles matched. Try a wider search.</div> : null}
         {pageJobs.length > 0 ? <p className="mt-5 text-xs leading-6 text-[#789087]">JobCraft aggregates live vacancies from multiple sources. Always verify the original listing before applying.</p> : null}
-
         {totalPages > 1 && !error ? <nav aria-label="Job result pages" className="jc-pagination">{page > 1 ? <Link href={pageHref(params, page - 1)} className="jc-button-secondary">← Previous</Link> : <span className="jc-button-secondary opacity-40">← Previous</span>}<span className="text-sm font-bold text-[#718981]">Page {page} of {totalPages}</span>{page < totalPages ? <Link href={pageHref(params, page + 1)} className="jc-button-secondary">Next →</Link> : <span className="jc-button-secondary opacity-40">Next →</span>}</nav> : null}
       </div>
     </WorkspaceShell>
   );
 }
 
-function companyInitials(company: string) {
-  return String(company || "JC").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "JC";
-}
-
-function salaryText(min: number | null, max: number | null) {
-  if (min && max) return `₹${min}–${max} LPA`;
-  if (max) return `Up to ₹${max} LPA`;
-  if (min) return `From ₹${min} LPA`;
-  return "Salary not listed";
-}
-
-function postedAge(postedAt: string | null) {
-  if (!postedAt) return "Recently posted";
-  const ms = Date.now() - new Date(postedAt).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "Recently posted";
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours < 24) return `${Math.max(1, hours)}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-function SearchIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>;
-}
-
-function LocationIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>;
-}
+function companyInitials(company: string) { return String(company || "JC").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "JC"; }
+function salaryText(min: number | null, max: number | null) { if (min && max) return `₹${min}–${max} LPA`; if (max) return `Up to ₹${max} LPA`; if (min) return `From ₹${min} LPA`; return "Salary not listed"; }
+function postedAge(postedAt: string | null) { if (!postedAt) return "Recently posted"; const ms = Date.now() - new Date(postedAt).getTime(); if (!Number.isFinite(ms) || ms < 0) return "Recently posted"; const hours = Math.floor(ms / 3_600_000); if (hours < 24) return `${Math.max(1, hours)}h ago`; return `${Math.floor(hours / 24)}d ago`; }
+function SearchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>; }
+function LocationIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>; }
