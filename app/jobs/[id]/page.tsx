@@ -77,7 +77,35 @@ export default async function JobDetailsPage({ params, searchParams }: { params:
 
           <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
             {user ? <>
-              <article className="jc-dark-card jc-tool-panel"><p className="jc-eyebrow !text-[#f49a48]">NEXT ACTION</p><h2 className="jc-section-title !text-white">Move this role forward.</h2><div className="mt-5 grid gap-3"><form action={saveApplication}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="status" value={application?.status ?? "Saved"} /><button className="w-full rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-sm font-black text-[#173f33]">{application ? `Tracker · ${application.status}` : "Save to application plan"}</button></form><form action={createCoverLetter}><input type="hidden" name="jobId" value={job.id} /><button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">Create cover letter</button></form><Link href="/applications" className="text-center text-xs font-extrabold text-[#f49a48] no-underline">Open application plan →</Link></div></article>
+              <article className="jc-dark-card jc-tool-panel">
+                <p className="jc-eyebrow !text-[#f49a48]">NEXT ACTION</p>
+                <h2 className="jc-section-title !text-white">Move this role forward.</h2>
+                <div className="mt-5 grid gap-3">
+                  {job.apply_url && !isSample ? <a href={`/api/jobs/${job.id}/apply`} target="_blank" rel="noopener noreferrer" className="w-full rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-center text-sm font-black text-[#173f33] no-underline">View / apply via {sourceLabel} ↗</a> : <span className="w-full rounded-[14px] bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white/50">Application link unavailable</span>}
+
+                  {!application ? (
+                    <form action={saveApplication}>
+                      <input type="hidden" name="jobId" value={job.id} />
+                      <input type="hidden" name="status" value="Saved" />
+                      <button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">Save to application plan</button>
+                    </form>
+                  ) : application.status === "Saved" ? (
+                    <form action={saveApplication}>
+                      <input type="hidden" name="jobId" value={job.id} />
+                      <input type="hidden" name="status" value="Applied" />
+                      <button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">Mark as applied</button>
+                    </form>
+                  ) : (
+                    <Link href="/applications" className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white no-underline">Tracker · {application.status}</Link>
+                  )}
+
+                  <form action={createCoverLetter}>
+                    <input type="hidden" name="jobId" value={job.id} />
+                    <button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">Create cover letter</button>
+                  </form>
+                  <Link href="/applications" className="text-center text-xs font-extrabold text-[#f49a48] no-underline">Open application plan →</Link>
+                </div>
+              </article>
 
               <article className="jc-card jc-tool-panel"><p className="jc-eyebrow">RESUME FOR THIS ROLE</p><h2 className="jc-section-title">Bring the right evidence forward.</h2><p className="jc-section-subtitle">Keep the facts the same. Change only the emphasis.</p>{resumes.length ? <form action={createTailoredResume} className="mt-4 grid gap-3"><input type="hidden" name="jobId" value={job.id} /><select name="resumeId" className="jc-input">{resumes.map((resume) => <option key={resume.id} value={resume.id}>{resume.name}{resume.is_primary ? " (Primary)" : ""}</option>)}</select><button className="jc-button-primary">Create role version →</button></form> : <Link href="/resume" className="jc-button-primary mt-4 w-full">Add a resume first →</Link>}</article>
             </> : <article className="jc-dark-card jc-tool-panel"><p className="jc-eyebrow !text-[#f49a48]">SEE YOUR FIT</p><h2 className="jc-section-title !text-white">Know before you apply.</h2><p className="mt-3 text-sm leading-6 text-[#a4b9b1]">Create your profile to see matched skills, gaps and evidence coverage.</p><Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="mt-5 block rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-center text-sm font-black text-[#173f33]">Get started →</Link></article>}
