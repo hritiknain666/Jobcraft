@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
+import GlobalSearch from "@/components/global-search";
 
 type ActiveKey = "workspace" | "jobs" | "applications" | "profile" | "resume" | "resume-builder" | "resume-tailor" | "certificates" | "cover-letter" | "career-assistant";
 
@@ -89,7 +90,7 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
 
       <div className="jc-main-column">
         <header className="jc-topbar">
-          <div className="jc-intention"><span /> Search with intention.</div>
+          <GlobalSearch />
           <div className="jc-top-actions">
             <Link href="/career-assistant" className="jc-button-primary !px-3 !py-2 text-[11px]" aria-label="Open AI Assistant preview">
               ✣ AI Assistant <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-[8px] uppercase tracking-[.08em]">Preview</span>
