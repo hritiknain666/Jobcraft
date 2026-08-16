@@ -37,7 +37,7 @@ async function checkUrl(url: string) {
     }
 
     if (response.status === 404 || response.status === 410) return "dead" as const;
-    if (response.status >= 200 && response.status < 400) return "alive" as const;
+    if (response.status >= 200 && response.status < 400) return "ok" as const;
     return "unknown" as const;
   } catch {
     return "unknown" as const;
@@ -45,31 +45,18 @@ async function checkUrl(url: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
-  }
+  if (req.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405 });
 
   const url = Deno.env.get("SUPABASE_URL");
   const secretMap = Deno.env.get("SUPABASE_SECRET_KEYS");
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   let adminKey = legacy;
-
   if (secretMap) {
-    try {
-      adminKey = JSON.parse(secretMap)?.default ?? legacy;
-    } catch {
-      adminKey = legacy;
-    }
+    try { adminKey = JSON.parse(secretMap)?.default ?? legacy; } catch { adminKey = legacy; }
   }
+  if (!url || !adminKey) return Response.json({ error: "Server configuration unavailable" }, { status: 500 });
 
-  if (!url || !adminKey) {
-    return Response.json({ error: "Server configuration unavailable" }, { status: 500 });
-  }
-
-  const supabase = createClient(url, adminKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
+  const supabase = createClient(url, adminKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const supplied = req.headers.get("x-jobcraft-cron-secret") ?? "";
   const { data: authRow, error: authError } = await supabase
     .from("job_refresh_auth")
@@ -77,12 +64,7 @@ Deno.serve(async (req) => {
     .eq("id", true)
     .single();
 
-  if (
-    authError ||
-    !authRow ||
-    !supplied ||
-    !constantEqual(await sha256(supplied), String(authRow.secret_sha256))
-  ) {
+  if (authError || !authRow || !supplied || !constantEqual(await sha256(supplied), String(authRow.secret_sha256))) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -91,10 +73,7 @@ Deno.serve(async (req) => {
     .insert({ status: "running" })
     .select("id")
     .single();
-
-  if (runError || !run?.id) {
-    return Response.json({ error: "Could not create audit record" }, { status: 500 });
-  }
+  if (runError || !run?.id) return Response.json({ error: "Could not create audit record" }, { status: 500 });
 
   try {
     const recheckBefore = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -107,27 +86,23 @@ Deno.serve(async (req) => {
       .or(`apply_url_checked_at.is.null,apply_url_checked_at.lt.${recheckBefore}`)
       .order("apply_url_checked_at", { ascending: true, nullsFirst: true })
       .limit(12);
-
     if (error) throw error;
 
     const checkedAt = new Date().toISOString();
-    const results = await Promise.all(
-      (jobs ?? []).map(async (job) => ({
-        id: job.id,
-        status: await checkUrl(String(job.apply_url)),
-      })),
-    );
+    const results = await Promise.all((jobs ?? []).map(async (job) => ({
+      id: job.id,
+      status: await checkUrl(String(job.apply_url)),
+    })));
 
-    let alive = 0;
+    let ok = 0;
     let dead = 0;
     let unknown = 0;
-
     for (const result of results) {
-      if (result.status === "alive") alive += 1;
+      if (result.status === "ok") ok += 1;
       else if (result.status === "dead") dead += 1;
       else unknown += 1;
 
-      await supabase
+      const { error: updateError } = await supabase
         .from("jobs")
         .update({
           apply_url_status: result.status,
@@ -135,13 +110,15 @@ Deno.serve(async (req) => {
           ...(result.status === "dead" ? { is_active: false } : {}),
         })
         .eq("id", result.id);
+      if (updateError) throw updateError;
     }
 
-    const summary = { LinkCheck: { checked: results.length, alive, dead, unknown } };
-    await supabase
+    const summary = { LinkCheck: { checked: results.length, ok, dead, unknown } };
+    const { error: auditError } = await supabase
       .from("job_refresh_runs")
       .update({ status: "success", finished_at: checkedAt, summary })
       .eq("id", run.id);
+    if (auditError) throw auditError;
 
     await supabase.rpc("jobcraft_run_feed_maintenance");
     return Response.json({ ok: true, ...summary.LinkCheck });
