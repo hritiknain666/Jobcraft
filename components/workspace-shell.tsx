@@ -21,6 +21,8 @@ const primaryNav = [
 
 const toolNav = [
   ["resume", "Resume studio", "/resume", "document"],
+  ["resume-builder", "Resume builder", "/resume/builder", "pencil"],
+  ["resume-tailor", "Resume tailoring", "/resume/tailor", "wand"],
   ["certificates", "Certificates", "/certificates", "award"],
   ["cover-letter", "Cover letters", "/cover-letter", "mail"],
 ] as const;
@@ -56,7 +58,7 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
           <p className="jc-nav-label">CAREER TOOLS</p>
           <nav className="jc-nav-list" aria-label="Career tools">
             {toolNav.map(([key, label, href, icon]) => (
-              <NavLink key={key} active={active === key || (key === "resume" && ["resume-builder", "resume-tailor"].includes(active))} href={href} label={label} icon={icon} compact />
+              <NavLink key={key} active={active === key} href={href} label={label} icon={icon} compact />
             ))}
           </nav>
         </div>
@@ -94,8 +96,6 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
             </Link>
             {!authenticated ? <Link href="/dashboard?auth=login" scroll={false} className="jc-text-link">Log in</Link> : null}
             <Link href="/applications" className="jc-bell" aria-label="Applications"><NavIcon name="bell" /><span /></Link>
-            <div className="jc-top-divider" />
-            <span className="jc-top-avatar" aria-hidden="true">{initials}</span>
           </div>
         </header>
         <main className="jc-workspace-content">{children}</main>
@@ -121,6 +121,8 @@ function NavIcon({ name }: { name: string }) {
   if (name === "briefcase") return <svg {...common}><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5.7C8 4.8 8.8 4 9.7 4h4.6c.9 0 1.7.8 1.7 1.7V7M3 11.5c5.7 2.2 12.3 2.2 18 0"/></svg>;
   if (name === "user") return <svg {...common}><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/><circle cx="12" cy="12" r="9"/></svg>;
   if (name === "document") return <svg {...common}><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>;
+  if (name === "pencil") return <svg {...common}><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 8.5 3 3"/></svg>;
+  if (name === "wand") return <svg {...common}><path d="m4 20 11-11M13 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3ZM18 14l.7 2.1L21 17l-2.3.8L18 20l-.8-2.2L15 17l2.2-.9L18 14Z"/></svg>;
   if (name === "award") return <svg {...common}><circle cx="12" cy="9" r="5"/><path d="m9 13-2 8 5-3 5 3-2-8"/></svg>;
   if (name === "mail") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>;
   if (name === "bell") return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>;
