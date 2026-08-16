@@ -22,19 +22,26 @@ export default async function ResumeTailoringPage() {
           <div>
             <p className="jc-eyebrow">ROLE-SPECIFIC EVIDENCE</p>
             <h1 className="jc-page-title">Resume tailoring</h1>
-            <p className="jc-page-copy max-w-2xl">Create a role-specific plan from your real resume and profile. JobCraft changes emphasis, not facts.</p>
+            <p className="jc-page-copy max-w-2xl">Use one real resume as the source of truth, then bring the most relevant evidence forward for each role.</p>
           </div>
-          <Link href="/jobs" className="jc-button-primary">Choose a role <span>→</span></Link>
+          <Link href="/jobs" className="jc-button-primary">1 · Choose a role <span>→</span></Link>
+        </section>
+
+        <section className="jc-card mt-7 p-5 sm:p-6">
+          <p className="jc-eyebrow">ONE CLEAR FLOW</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[['01','Choose job','Open a role you genuinely want to apply for.'],['02','Choose resume','Select the factual resume version you want to use.'],['03','Tailor emphasis','Bring relevant skills and evidence forward without inventing claims.'],['04','Review & use','Check the role-specific plan before using it in your application.']].map(([step,title,text]) => <div key={step} className="rounded-[16px] bg-[#efede7] p-4"><span className="text-[10px] font-black tracking-[.12em] text-[#f49a48]">STEP {step}</span><b className="mt-2 block text-sm text-[#173f33]">{title}</b><p className="mt-2 text-xs leading-5 text-[#789087]">{text}</p></div>)}
+          </div>
         </section>
 
         <section className="mt-8 grid gap-5 lg:grid-cols-[.72fr_1.28fr]">
           <aside className="jc-dark-card p-7">
-            <p className="jc-eyebrow !text-[#f49a48]">HOW IT WORKS</p>
+            <p className="jc-eyebrow !text-[#f49a48]">WHY THIS WORKS</p>
             <h2 className="jc-section-title !mt-3 !text-white">Tailor without inventing.</h2>
             <div className="mt-6 space-y-5 text-sm leading-6 text-[#b6c7c0]">
-              <p><b className="text-white">1. Choose a job</b><br/>Start from a role you are genuinely considering.</p>
-              <p><b className="text-white">2. Choose your source resume</b><br/>JobCraft keeps your existing evidence as the source of truth.</p>
-              <p><b className="text-white">3. Reorder the emphasis</b><br/>Bring relevant skills, projects and experience forward without adding fake claims.</p>
+              <p><b className="text-white">Keep facts fixed</b><br/>Your original resume remains the source of truth.</p>
+              <p><b className="text-white">Change relevance, not reality</b><br/>Prioritise the experience, skills and projects that matter most for the selected job.</p>
+              <p><b className="text-white">Review before use</b><br/>You stay in control of every tailored version before it becomes part of an application.</p>
             </div>
             <Link href="/resume" className="mt-7 inline-block text-sm font-extrabold text-[#f49a48] no-underline">Open Resume Studio ↗</Link>
           </aside>
@@ -57,14 +64,14 @@ export default async function ResumeTailoringPage() {
                     <b>{item.title}</b>
                     <span>Created {new Date(item.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
                   </span>
-                  <span className="jc-role-meta"><span className="jc-match-pill">Factual plan</span></span>
+                  <span className="jc-role-meta"><span className="jc-match-pill">Review & use</span></span>
                   <span aria-hidden="true">›</span>
                 </Link>
               )) : (
                 <div className="py-12 text-center">
                   <h3 className="jc-serif text-2xl font-bold text-[#173f33]">No tailored versions yet.</h3>
                   <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#789087]">Open a job, choose one of your resumes and create a role-specific version. Your original facts stay unchanged.</p>
-                  <Link href="/jobs" className="jc-button-primary mt-6">Find a role to tailor →</Link>
+                  <Link href="/jobs" className="jc-button-primary mt-6">Choose your first role →</Link>
                 </div>
               )}
             </div>
