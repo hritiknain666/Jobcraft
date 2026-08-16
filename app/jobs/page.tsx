@@ -60,8 +60,6 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  // Freshness is enforced in the ingestion layer: aggregator listings age out,
-  // while direct Greenhouse/Lever snapshots deactivate jobs when employers remove them.
   let query = supabase
     .from("jobs")
     .select("*", { count: "exact" })
@@ -89,7 +87,6 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
       .select("job_id,status")
       .eq("user_id", user.id)
       .in("job_id", pageJobs.map((job: any) => job.id));
-
     for (const item of tracked ?? []) {
       if (item.job_id) trackedByJob.set(String(item.job_id), String(item.status ?? "Saved"));
     }
@@ -101,23 +98,14 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     <WorkspaceShell active="jobs" authenticated={Boolean(user)} name={profile?.full_name} headline={profile?.headline} strength={profileStrength}>
       <div className="jc-content-wrap">
         <section className="jc-discover-head">
-          <div>
-            <p className="jc-eyebrow">THE OPPORTUNITY MAP</p>
-            <h1 className="jc-page-title">Discover roles</h1>
-          </div>
+          <div><p className="jc-eyebrow">THE OPPORTUNITY MAP</p><h1 className="jc-page-title">Discover roles</h1></div>
           <a href="#job-filters" className="jc-button-secondary">☷ Filters⌄</a>
         </section>
 
         <form action="/jobs" className="jc-card jc-search-panel" id="job-filters">
           <div className="jc-search-row">
-            <label className="jc-search-field">
-              <SearchIcon />
-              <input name="q" defaultValue={params.q ?? ""} placeholder="Search title, skill, or company" aria-label="Search title, skill, or company" />
-            </label>
-            <label className="jc-search-field">
-              <LocationIcon />
-              <input name="location" list="jc-locations" defaultValue={params.location ?? ""} placeholder="Location or city" aria-label="Location or city" />
-            </label>
+            <label className="jc-search-field"><SearchIcon /><input name="q" defaultValue={params.q ?? ""} placeholder="Search title, skill, or company" aria-label="Search title, skill, or company" /></label>
+            <label className="jc-search-field"><LocationIcon /><input name="location" list="jc-locations" defaultValue={params.location ?? ""} placeholder="Location or city" aria-label="Location or city" /></label>
           </div>
           <datalist id="jc-locations">{facets.locations.slice(0, 80).map((location) => <option key={location} value={location} />)}</datalist>
           <datalist id="jc-skills">{facets.skills.slice(0, 120).map((skill) => <option key={skill} value={skill} />)}</datalist>
@@ -125,27 +113,18 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
             <summary>Advanced filters · skill, work mode, salary and experience</summary>
             <div className="jc-filter-grid">
               <input className="jc-input" name="skill" list="jc-skills" defaultValue={params.skill ?? ""} placeholder="Skill e.g. SQL" />
-              <select className="jc-input" name="work_mode" defaultValue={params.work_mode ?? ""}>
-                <option value="">Any work mode</option>
-                {facets.workModes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
-              </select>
+              <select className="jc-input" name="work_mode" defaultValue={params.work_mode ?? ""}><option value="">Any work mode</option>{facets.workModes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select>
               <input className="jc-input" name="salary" type="number" min="0" step="0.5" defaultValue={params.salary ?? ""} placeholder="Min salary LPA" />
               <input className="jc-input" name="experience" type="number" min="0" max="50" step="0.5" defaultValue={params.experience ?? ""} placeholder="Your experience" />
               <button className="jc-button-primary" type="submit">Apply filters →</button>
             </div>
           </details>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <button className="jc-button-primary" type="submit">Search roles →</button>
-            {(searchTerm || params.location || params.skill || params.work_mode || params.salary || params.experience) ? <Link href="/jobs" className="jc-text-link">Clear all filters</Link> : null}
-          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><button className="jc-button-primary" type="submit">Search roles →</button>{(searchTerm || params.location || params.skill || params.work_mode || params.salary || params.experience) ? <Link href="/jobs" className="jc-text-link">Clear all filters</Link> : null}</div>
         </form>
 
-        <div className="jc-results-meta">
-          <span><b>{resultCount}</b> role{resultCount === 1 ? "" : "s"} tuned to your direction</span>
-          <span className="flex items-center gap-2 text-[#278363]">✣ {profile ? "Match engine active" : "Create a profile to activate matching"}</span>
-        </div>
-
+        <div className="jc-results-meta"><span><b>{resultCount}</b> role{resultCount === 1 ? "" : "s"} tuned to your direction</span><span className="flex items-center gap-2 text-[#278363]">✣ {profile ? "Match engine active" : "Create a profile to activate matching"}</span></div>
         {error ? <div className="jc-card p-5 text-red-700">Could not load jobs: {error.message}</div> : null}
+
         <section className="jc-role-grid">
           {pageJobs.map((job: any) => {
             const match = calculateJobsListMatch(job, profile);
@@ -154,35 +133,16 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
             return (
               <article key={job.id} className="jc-card jc-job-card">
                 <Link href={`/jobs/${job.id}`} className="flex flex-1 flex-col text-inherit no-underline">
-                  <div className="jc-job-card-top">
-                    <span className="jc-company-square">{companyInitials(job.company)}</span>
-                    <span className="jc-bookmark" aria-hidden="true">{trackedStatus ? "✓" : "⌑"}</span>
-                  </div>
+                  <div className="jc-job-card-top"><span className="jc-company-square">{companyInitials(job.company)}</span><span className="jc-bookmark" aria-hidden="true">{trackedStatus ? "✓" : "⌑"}</span></div>
                   <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#e4f0e9] px-2 py-1 text-[9px] normal-case tracking-normal text-[#278363]">Live role</span></div>
                   <h2 className="jc-job-title">{job.title}</h2>
                   <p className="jc-job-details">⌖ {job.location_normalized || job.location || "India"} · {job.work_mode || "Work mode not listed"} · {salaryText(job.salary_min_lpa, job.salary_max_lpa)}</p>
-                  <div className="jc-job-card-footer">
-                    <div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div>
-                    <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source}</div>
-                  </div>
+                  <div className="jc-job-card-footer"><div className="jc-job-match">{match ? `${match.score}% match · ${Math.round(match.evidenceCoverage * 100)}% evidence` : "Build profile for match"}</div><div className="jc-job-age">{postedAge(job.posted_at)}</div></div>
                 </Link>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  {user ? (
-                    trackedStatus ? <Link href="/applications" className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#278363] no-underline">{trackedStatus} ✓</Link> : (
-                      <form action={saveApplication}>
-                        <input type="hidden" name="jobId" value={job.id} />
-                        <input type="hidden" name="status" value="Saved" />
-                        <button className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33]">Save role +</button>
-                      </form>
-                    )
-                  ) : <Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33] no-underline">Save role +</Link>}
-
-                  {attribution?.href ? (
-                    <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit text-[10px] font-extrabold uppercase tracking-[.08em] text-[#5f786f] no-underline hover:text-[#173f33]">
-                      {attribution.label} ↗
-                    </a>
-                  ) : null}
+                  {user ? (trackedStatus ? <Link href="/applications" className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#278363] no-underline">{trackedStatus} ✓</Link> : <form action={saveApplication}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="status" value="Saved" /><button className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33]">Save role +</button></form>) : <Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33] no-underline">Save role +</Link>}
+                  {attribution?.requiredPerListing && attribution.href ? <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="text-[9px] font-semibold text-[#8a9b95] no-underline">{attribution.label} ↗</a> : null}
                 </div>
               </article>
             );
@@ -190,15 +150,9 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         </section>
 
         {!pageJobs.length && !error ? <div className="jc-card mt-5 p-12 text-center text-[#6f887f]">No roles matched. Try a wider search.</div> : null}
-        {pageJobs.length > 0 ? <p className="mt-5 text-xs leading-6 text-[#789087]">Live vacancies retain their provider source and external application link. Always verify the provider listing before applying.</p> : null}
+        {pageJobs.length > 0 ? <p className="mt-5 text-xs leading-6 text-[#789087]">JobCraft aggregates live vacancies from multiple sources. Always verify the original listing before applying.</p> : null}
 
-        {totalPages > 1 && !error ? (
-          <nav aria-label="Job result pages" className="jc-pagination">
-            {page > 1 ? <Link href={pageHref(params, page - 1)} className="jc-button-secondary">← Previous</Link> : <span className="jc-button-secondary opacity-40">← Previous</span>}
-            <span className="text-sm font-bold text-[#718981]">Page {page} of {totalPages}</span>
-            {page < totalPages ? <Link href={pageHref(params, page + 1)} className="jc-button-secondary">Next →</Link> : <span className="jc-button-secondary opacity-40">Next →</span>}
-          </nav>
-        ) : null}
+        {totalPages > 1 && !error ? <nav aria-label="Job result pages" className="jc-pagination">{page > 1 ? <Link href={pageHref(params, page - 1)} className="jc-button-secondary">← Previous</Link> : <span className="jc-button-secondary opacity-40">← Previous</span>}<span className="text-sm font-bold text-[#718981]">Page {page} of {totalPages}</span>{page < totalPages ? <Link href={pageHref(params, page + 1)} className="jc-button-secondary">Next →</Link> : <span className="jc-button-secondary opacity-40">Next →</span>}</nav> : null}
       </div>
     </WorkspaceShell>
   );
@@ -221,8 +175,7 @@ function postedAge(postedAt: string | null) {
   if (!Number.isFinite(ms) || ms < 0) return "Recently posted";
   const hours = Math.floor(ms / 3_600_000);
   if (hours < 24) return `${Math.max(1, hours)}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function SearchIcon() {
