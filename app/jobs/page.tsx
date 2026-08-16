@@ -5,6 +5,7 @@ import { calculateJobsListMatch, type JobsListProfile } from "@/lib/jobs-list-ma
 import { getProviderAttribution } from "@/lib/job-sources/attribution";
 import { getJobFacets, type JobFacets } from "@/lib/job-sources/facets";
 import { normalizeLocationSearch } from "@/lib/job-sources/location-search";
+import { saveApplication } from "@/app/applications/actions";
 
 const EMPTY_FACETS: JobFacets = { titles: [], locations: [], skills: [], workModes: [] };
 const PAGE_SIZE = 24;
@@ -80,6 +81,20 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const resultCount = count ?? jobs?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(resultCount / PAGE_SIZE));
   const pageJobs = jobs ?? [];
+  const trackedByJob = new Map<string, string>();
+
+  if (user && pageJobs.length) {
+    const { data: tracked } = await supabase
+      .from("applications")
+      .select("job_id,status")
+      .eq("user_id", user.id)
+      .in("job_id", pageJobs.map((job: any) => job.id));
+
+    for (const item of tracked ?? []) {
+      if (item.job_id) trackedByJob.set(String(item.job_id), String(item.status ?? "Saved"));
+    }
+  }
+
   const profileStrength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
   return (
@@ -135,12 +150,13 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           {pageJobs.map((job: any) => {
             const match = calculateJobsListMatch(job, profile);
             const attribution = getProviderAttribution(job.source, job.apply_url);
+            const trackedStatus = trackedByJob.get(String(job.id));
             return (
               <article key={job.id} className="jc-card jc-job-card">
                 <Link href={`/jobs/${job.id}`} className="flex flex-1 flex-col text-inherit no-underline">
                   <div className="jc-job-card-top">
                     <span className="jc-company-square">{companyInitials(job.company)}</span>
-                    <span className="jc-bookmark" aria-hidden="true">⌑</span>
+                    <span className="jc-bookmark" aria-hidden="true">{trackedStatus ? "✓" : "⌑"}</span>
                   </div>
                   <div className="jc-job-source">{job.company} <span className="ml-2 rounded-full bg-[#e4f0e9] px-2 py-1 text-[9px] normal-case tracking-normal text-[#278363]">Live role</span></div>
                   <h2 className="jc-job-title">{job.title}</h2>
@@ -150,11 +166,24 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                     <div className="jc-job-age">{postedAge(job.posted_at)} · {job.source}</div>
                   </div>
                 </Link>
-                {attribution?.href ? (
-                  <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-fit text-[10px] font-extrabold uppercase tracking-[.08em] text-[#5f786f] no-underline hover:text-[#173f33]">
-                    {attribution.label} ↗
-                  </a>
-                ) : null}
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  {user ? (
+                    trackedStatus ? <Link href="/applications" className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#278363] no-underline">{trackedStatus} ✓</Link> : (
+                      <form action={saveApplication}>
+                        <input type="hidden" name="jobId" value={job.id} />
+                        <input type="hidden" name="status" value="Saved" />
+                        <button className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33]">Save role +</button>
+                      </form>
+                    )
+                  ) : <Link href={`/jobs/${job.id}?auth=signup`} scroll={false} className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[#173f33] no-underline">Save role +</Link>}
+
+                  {attribution?.href ? (
+                    <a href={attribution.href} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit text-[10px] font-extrabold uppercase tracking-[.08em] text-[#5f786f] no-underline hover:text-[#173f33]">
+                      {attribution.label} ↗
+                    </a>
+                  ) : null}
+                </div>
               </article>
             );
           })}
