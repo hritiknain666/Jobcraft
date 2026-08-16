@@ -95,8 +95,11 @@ function ApplicationCard({ item, compact = false }: { item: any; compact?: boole
             <button className="jc-mini-button">Update</button>
           </div>
         </form>
+        {item.status === "Interview" && job?.id ? (
+          <Link href={`/career-assistant?mode=interview&jobId=${job.id}`} className="jc-mini-button mt-2 inline-flex w-full justify-center no-underline">Prepare for this interview →</Link>
+        ) : null}
         <div className="flex items-center justify-between gap-3 text-[10px] text-[#789087]">
-          <span>{item.status === "Interview" ? "◷ Prepare talking points" : item.status === "Saved" ? "◷ Tailor resume" : `Updated ${new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}</span>
+          <span>{item.status === "Interview" ? "◷ Job-specific prep ready" : item.status === "Saved" ? "◷ Tailor resume" : `Updated ${new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}</span>
           <form action={deleteApplication}><input type="hidden" name="id" value={item.id} /><button className="font-bold text-[#8b6d67]">Remove</button></form>
         </div>
       </div>
