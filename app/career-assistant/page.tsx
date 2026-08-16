@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch } from "@/lib/job-match";
 import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
 
-export default async function CareerAssistantPage() {
+export default async function CareerAssistantPage({ searchParams }: { searchParams: Promise<{ mode?: string; jobId?: string }> }) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,6 +18,12 @@ export default async function CareerAssistantPage() {
     supabase.from("resumes").select("id").eq("user_id", user.id),
     supabase.from("certificates").select("id").eq("user_id", user.id),
   ]);
+
+  let selectedJob: any = null;
+  if (params.mode === "interview" && params.jobId) {
+    const { data } = await supabase.from("jobs").select("id,title,company,description,skills,location,work_mode").eq("id", params.jobId).eq("is_active", true).maybeSingle();
+    selectedJob = data;
+  }
 
   const matches = (jobs ?? []).map((job) => ({
     job,
@@ -51,6 +58,7 @@ export default async function CareerAssistantPage() {
   ].filter(Boolean) as string[][];
 
   const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
+  const interviewQuestions = selectedJob ? buildInterviewQuestions(selectedJob, profile?.skills ?? []) : [];
 
   return (
     <WorkspaceShell active="career-assistant" name={profile?.full_name} headline={profile?.headline} strength={strength}>
@@ -59,6 +67,14 @@ export default async function CareerAssistantPage() {
           <div><p className="jc-eyebrow">YOUR NEXT BEST MOVE</p><h1 className="jc-page-title">Career assistant</h1><p className="jc-page-copy">Turn your profile, match patterns and application history into a short, practical list of priorities.</p></div>
           <div className="flex flex-wrap gap-2"><Link href="/jobs" className="jc-button-primary">Explore roles →</Link><Link href="/profile" className="jc-button-secondary">Update profile</Link></div>
         </section>
+
+        {selectedJob ? (
+          <section className="jc-dark-card mt-6 p-6 sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="jc-eyebrow !text-[#f49a48]">INTERVIEW PREP</p><h2 className="jc-section-title !mt-3 !text-white">Prepare for {selectedJob.title}</h2><p className="mt-2 text-sm text-[#b5c7c0]">{selectedJob.company} · {selectedJob.location || "India"}</p></div><Link href={`/jobs/${selectedJob.id}`} className="text-sm font-extrabold text-[#f49a48] no-underline">Open job ↗</Link></div>
+            <div className="mt-6 grid gap-3 md:grid-cols-2">{interviewQuestions.map((question, index) => <div key={question} className="rounded-[16px] border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white"><span className="mr-2 text-[#f49a48]">0{index + 1}</span>{question}</div>)}</div>
+            <p className="mt-5 text-[11px] leading-5 text-[#9bb3aa]">These questions are grounded in the job title, listed skills and your saved profile. They are not AI-generated yet.</p>
+          </section>
+        ) : null}
 
         <section className="jc-stats-grid">
           <Stat label="Applications sent" value={String(applied)} note="saved roles excluded" />
@@ -87,6 +103,21 @@ export default async function CareerAssistantPage() {
       </div>
     </WorkspaceShell>
   );
+}
+
+function buildInterviewQuestions(job: any, userSkills: string[]) {
+  const jobSkills = (job.skills ?? []).filter(Boolean).slice(0, 4);
+  const matched = jobSkills.filter((skill: string) => userSkills.some((own) => own.toLowerCase() === String(skill).toLowerCase()));
+  const focus = matched[0] || jobSkills[0];
+  const second = matched[1] || jobSkills[1];
+  return [
+    `Walk me through your background and why it fits this ${job.title} role.`,
+    focus ? `Tell me about a real example where you used ${focus} and what result you achieved.` : `Which part of your experience best prepares you for this role?`,
+    second ? `How would you approach a task in this role that requires ${second}?` : `Describe a difficult problem you solved and how you measured success.`,
+    `Why do you want to work with ${job.company}, and what would you want to learn in your first 90 days?`,
+    `Which requirement in this job description is your strongest evidence, and which one would you need to strengthen?`,
+    `What questions would you ask the interviewer to understand expectations, team priorities and success measures?`,
+  ];
 }
 
 function PublicAssistantPreview() {
