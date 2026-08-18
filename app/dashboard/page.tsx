@@ -10,11 +10,13 @@ export default async function DashboardPage() {
 
   if (!user) return <GuestWorkspace />;
 
-  const [{ data: profile }, { count: resumeCount }, { data: applications }, { data: jobs }] = await Promise.all([
+  const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [{ data: profile }, { count: resumeCount }, { data: applications }, { data: jobs }, { count: freshRoleCount }] = await Promise.all([
     supabase.from("profiles").select("full_name,city,headline,experience_years,target_roles,skills,preferred_work_modes").eq("id", user.id).maybeSingle(),
     supabase.from("resumes").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("applications").select("id,status,created_at,updated_at,jobs(id,title,company,location,work_mode)").eq("user_id", user.id).order("updated_at", { ascending: false }),
-    supabase.from("jobs").select("id,title,company,location,work_mode,salary_min_lpa,salary_max_lpa,experience_min,skills,source,posted_at").eq("is_active", true).gte("posted_at", jobFreshnessCutoff()).order("posted_at", { ascending: false }).limit(18),
+    supabase.from("jobs").select("id,title,company,location,work_mode,salary_min_lpa,salary_max_lpa,experience_min,skills,source,posted_at").eq("is_active", true).gte("posted_at", jobFreshnessCutoff()).order("posted_at", { ascending: false }).limit(30),
+    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true).is("duplicate_of", null).neq("apply_url_status", "dead").gte("first_seen_at", last24Hours),
   ]);
 
   const skills = profile?.skills ?? [];
@@ -35,7 +37,7 @@ export default async function DashboardPage() {
   const displayName = profile?.full_name?.trim() || user.user_metadata?.full_name || "Your profile";
   const firstName = displayName.split(/\s+/)[0] || "there";
 
-  const recommendations = (jobs ?? []).map((job: any) => ({
+  const rankedJobs = (jobs ?? []).map((job: any) => ({
     ...job,
     match: calculateJobMatch({
       jobSkills: job.skills ?? [],
@@ -52,12 +54,13 @@ export default async function DashboardPage() {
   })).sort((a: any, b: any) => {
     const evidenceGap = b.match.evidenceCoverage - a.match.evidenceCoverage;
     return Math.abs(evidenceGap) > .25 ? evidenceGap : b.match.score - a.match.score;
-  }).slice(0, 4);
+  });
 
+  const recommendations = rankedJobs.slice(0, 4);
+  const strongMatchCount = rankedJobs.filter((job: any) => job.match.score >= 75 && job.match.evidenceCoverage >= .5).length;
   const savedCount = applications?.filter((item: any) => item.status === "Saved").length ?? 0;
   const motionCount = applications?.filter((item: any) => ["Applied", "Screening", "Interview"].includes(item.status)).length ?? 0;
   const interviewCount = applications?.filter((item: any) => item.status === "Interview").length ?? 0;
-  const newMatchCount = recommendations.filter((job: any) => job.match.score >= 55).length;
   const currentDate = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "2-digit", month: "short" }).format(new Date()).toUpperCase();
 
   const upcoming = (applications ?? [])
@@ -71,18 +74,35 @@ export default async function DashboardPage() {
           <div>
             <p className="jc-eyebrow">{currentDate} · YOUR WORKSPACE</p>
             <h1 className="jc-page-title">Good to see you, {firstName}.</h1>
+            <p className="jc-page-copy mt-3">{freshRoleCount ?? 0} new role{freshRoleCount === 1 ? "" : "s"} in the last 24 hours · {strongMatchCount} strong match{strongMatchCount === 1 ? "" : "es"} in your current shortlist.</p>
           </div>
           <Link href="/jobs" className="jc-button-primary">✣ Find your next role <span>↗</span></Link>
         </section>
 
         <section className="jc-stats-grid" aria-label="Career search summary">
-          <StatCard label="New matches" value={newMatchCount} note="roles tuned to you" icon="↗" />
-          <StatCard label="Saved roles" value={savedCount} note="worth a closer look" icon="✣" />
+          <StatCard label="New roles · 24h" value={freshRoleCount ?? 0} note="fresh live opportunities" icon="↗" />
+          <StatCard label="Strong matches" value={strongMatchCount} note="75%+ with enough evidence" icon="✣" />
           <StatCard label="In motion" value={motionCount} note="applications active" icon="▣" />
           <StatCard label="Interviews" value={interviewCount} note="conversations ahead" icon="▦" />
         </section>
 
-        <section className="jc-dashboard-grid">
+        <section className="jc-card mt-6 p-5 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div><p className="jc-eyebrow">ONE CLEAR JOB JOURNEY</p><h2 className="jc-section-title">From discovery to interview prep</h2><p className="jc-section-subtitle">JobCraft keeps the next useful action visible instead of throwing twenty shiny buttons at you.</p></div>
+            <span className="jc-chip">{savedCount} saved</span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              ["01", "Discover", "/jobs", "Find fresh roles."],
+              ["02", "Match", "/jobs", "See why a role fits."],
+              ["03", "Tailor", "/resume/tailor", "Prepare the right resume."],
+              ["04", "Apply", "/applications", "Track each application."],
+              ["05", "Prepare", "/career-assistant", "Get job-specific interview prep."],
+            ].map(([step, title, href, text]) => <Link key={step} href={href} className="rounded-[15px] bg-[#efede7] p-4 text-inherit no-underline transition hover:-translate-y-0.5 hover:bg-[#e8ece7]"><span className="text-[9px] font-black tracking-[.12em] text-[#f49a48]">{step}</span><b className="mt-2 block text-sm text-[#173f33]">{title}</b><p className="mt-1 text-[11px] leading-5 text-[#789087]">{text}</p></Link>)}
+          </div>
+        </section>
+
+        <section className="jc-dashboard-grid mt-6">
           <div className="jc-card jc-section-card">
             <div className="jc-section-head">
               <div>
@@ -118,16 +138,19 @@ export default async function DashboardPage() {
               <span className="text-xl text-[#9bb3aa]">◷</span>
             </div>
             <div className="jc-upcoming-list">
-              {upcoming.length ? upcoming.map((item: any) => (
-                <Link href="/applications" key={item.id} className="jc-upcoming-item text-inherit no-underline">
-                  <span className="jc-upcoming-badge">{companyInitials(item.jobs?.company || "JC").slice(0, 1)}</span>
-                  <span className="jc-upcoming-copy">
-                    <b>{item.status === "Interview" ? "Prepare for your interview" : item.status === "Screening" ? "Screening in progress" : "Follow up with recruiter"}</b>
-                    <span>{item.jobs?.company || "Application"} · {item.jobs?.title || "Role"}</span>
-                    <span className="jc-upcoming-date">{new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
-                  </span>
-                </Link>
-              )) : (
+              {upcoming.length ? upcoming.map((item: any) => {
+                const href = item.status === "Interview" && item.jobs?.id ? `/career-assistant?mode=interview&jobId=${item.jobs.id}` : "/applications";
+                return (
+                  <Link href={href} key={item.id} className="jc-upcoming-item text-inherit no-underline">
+                    <span className="jc-upcoming-badge">{companyInitials(item.jobs?.company || "JC").slice(0, 1)}</span>
+                    <span className="jc-upcoming-copy">
+                      <b>{item.status === "Interview" ? "Prepare for your interview" : item.status === "Screening" ? "Screening in progress" : "Follow up with recruiter"}</b>
+                      <span>{item.jobs?.company || "Application"} · {item.jobs?.title || "Role"}</span>
+                      <span className="jc-upcoming-date">{item.status === "Interview" ? "Open job-specific prep →" : new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                    </span>
+                  </Link>
+                );
+              }) : (
                 <div className="pt-3">
                   <p className="text-sm font-bold">Your plan is clear.</p>
                   <p className="mt-2 text-xs leading-6 text-[#9bb3aa]">Save a role or move an application forward and the next action will appear here.</p>
@@ -169,17 +192,17 @@ function GuestWorkspace() {
         <section className="jc-dashboard-head">
           <div>
             <p className="jc-eyebrow">{currentDate} · JOBCRAFT WORKSPACE</p>
-            <h1 className="jc-page-title">Your career workspace is ready.</h1>
-            <p className="jc-page-copy max-w-2xl">This is the real JobCraft product. Log in when you want to search roles, build your profile, prepare resumes, tailor applications or use career tools.</p>
+            <h1 className="jc-page-title">Find the role. Prove the fit. Move forward.</h1>
+            <p className="jc-page-copy max-w-2xl">Discover live jobs, understand your fit, tailor a factual resume, track applications and prepare for interviews in one career workspace.</p>
           </div>
           <Link href="/dashboard?auth=login" scroll={false} className="jc-button-primary">Log in to JobCraft <span>→</span></Link>
         </section>
 
         <section className="jc-stats-grid" aria-label="Locked career search summary">
-          <LockedStat label="New matches" note="personalised after login" />
-          <LockedStat label="Saved roles" note="your shortlist" />
+          <LockedStat label="Fresh roles" note="updated continuously" />
+          <LockedStat label="Strong matches" note="personalised after login" />
           <LockedStat label="In motion" note="active applications" />
-          <LockedStat label="Interviews" note="your conversations" />
+          <LockedStat label="Interviews" note="job-specific preparation" />
         </section>
 
         <section className="jc-dashboard-grid">
@@ -187,21 +210,21 @@ function GuestWorkspace() {
             <div className="jc-section-head">
               <div>
                 <p className="jc-eyebrow">YOUR JOBCRAFT TOOLKIT</p>
-                <h2 className="jc-section-title">Everything stays in one workspace</h2>
-                <p className="jc-section-subtitle">See the full product before you sign in. Your personal data only appears after authentication.</p>
+                <h2 className="jc-section-title">One journey, not a pile of tools</h2>
+                <p className="jc-section-subtitle">Explore the product before signing in. Personal data appears only after authentication.</p>
               </div>
             </div>
             <div className="jc-role-list">
               {[
-                ["JM", "Job matching", "Search roles and see evidence-aware fit signals.", "/jobs"],
-                ["RB", "Resume builder", "Create factual ATS-friendly resume versions.", "/resume/builder"],
-                ["RT", "Resume tailoring", "Prepare a role-specific version from real evidence.", "/resume/tailor"],
-                ["CL", "Cover letters", "Create grounded role-specific application drafts.", "/cover-letter"],
+                ["JM", "Discover & match", "Search live roles and see evidence-aware fit signals.", "/jobs"],
+                ["RT", "Tailor your resume", "Prepare a role-specific version from real evidence.", "/resume/tailor"],
+                ["AP", "Track applications", "Move saved roles through interview and offer.", "/applications"],
+                ["IP", "Prepare for interviews", "Use the actual job to focus your preparation.", "/career-assistant"],
               ].map(([mark, title, text, href]) => (
                 <Link key={title} href={href} className="jc-role-row">
                   <span className="jc-company-dot">{mark}</span>
                   <span className="jc-role-copy"><b>{title}</b><span>{text}</span></span>
-                  <span className="jc-role-meta"><span className="jc-match-pill">Login required</span></span>
+                  <span className="jc-role-meta"><span className="jc-match-pill">Explore</span></span>
                   <span aria-hidden="true">›</span>
                 </Link>
               ))}
@@ -210,13 +233,13 @@ function GuestWorkspace() {
 
           <div className="jc-dark-card jc-coming-card">
             <div className="jc-section-head">
-              <div><p className="jc-eyebrow">CAREER TOOLS</p><h2 className="jc-section-title">Built around your search</h2></div>
+              <div><p className="jc-eyebrow">THE FLOW</p><h2 className="jc-section-title">Know the next move</h2></div>
             </div>
             <div className="mt-6 space-y-4 text-sm leading-6 text-[#b5c7c0]">
-              <p><b className="text-white">Resume Studio</b><br/>Build, upload and manage resume versions.</p>
-              <p><b className="text-white">Certificates</b><br/>Keep credentials and private proof organised.</p>
-              <p><b className="text-white">Career Assistant</b><br/>Turn your profile and application history into priorities.</p>
-              <p><b className="text-white">Application Plan</b><br/>Track saved roles through interview and offer.</p>
+              <p><b className="text-white">1. Find</b><br/>Discover fresh roles worth reviewing.</p>
+              <p><b className="text-white">2. Understand</b><br/>See why the role fits and what needs checking.</p>
+              <p><b className="text-white">3. Prepare</b><br/>Tailor your resume and application materials.</p>
+              <p><b className="text-white">4. Move</b><br/>Apply, track and prepare for the conversation.</p>
             </div>
             <Link href="/dashboard?auth=signup" scroll={false} className="mt-7 inline-block text-sm font-extrabold text-[#f49a48] no-underline">Create your workspace ↗</Link>
           </div>
