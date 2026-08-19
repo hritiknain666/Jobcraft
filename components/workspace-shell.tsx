@@ -22,7 +22,6 @@ const primaryNav = [
 
 const toolNav = [
   ["resume", "Resume studio", "/resume", "document"],
-  ["resume-builder", "Resume builder", "/resume/builder", "pencil"],
   ["resume-tailor", "Resume tailoring", "/resume/tailor", "wand"],
   ["certificates", "Certificates", "/certificates", "award"],
   ["cover-letter", "Cover letters", "/cover-letter", "mail"],
@@ -59,7 +58,7 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
           <p className="jc-nav-label">CAREER TOOLS</p>
           <nav className="jc-nav-list" aria-label="Career tools">
             {toolNav.map(([key, label, href, icon]) => (
-              <NavLink key={key} active={active === key} href={href} label={label} icon={icon} compact />
+              <NavLink key={key} active={active === key || (key === "resume" && active === "resume-builder")} href={href} label={label} icon={icon} compact />
             ))}
           </nav>
         </div>
