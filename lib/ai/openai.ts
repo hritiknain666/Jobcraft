@@ -5,11 +5,32 @@ type AiResponse = {
   model: string;
 };
 
+type ResponsesApiPayload = {
+  model?: string;
+  output?: Array<{
+    type?: string;
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
+};
+
 const DEFAULT_MODEL = "gpt-5.6";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
 export function isAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
+function extractOutputText(payload: ResponsesApiPayload) {
+  return (payload.output ?? [])
+    .flatMap((item) => item.content ?? [])
+    .filter((content) => content.type === "output_text" && typeof content.text === "string")
+    .map((content) => content.text!.trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 }
 
 export async function generateCareerAssistantResponse({
@@ -43,8 +64,9 @@ export async function generateCareerAssistantResponse({
     throw new Error(`AI_REQUEST_FAILED:${response.status}:${requestId}`);
   }
 
-  const payload = (await response.json()) as { output_text?: string };
-  const text = payload.output_text?.trim();
+  const payload = (await response.json()) as ResponsesApiPayload;
+  const text = extractOutputText(payload);
   if (!text) throw new Error("AI_EMPTY_RESPONSE");
-  return { text, model };
+
+  return { text, model: payload.model?.trim() || model };
 }
