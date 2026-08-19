@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { logout } from "@/app/auth/actions";
+import { deleteAccount } from "@/app/settings/actions";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -47,7 +48,7 @@ export default async function SettingsPage() {
           <div>
             <p className="jc-eyebrow">ACCOUNT & PRIVACY</p>
             <h1 className="jc-page-title">Settings</h1>
-            <p className="jc-page-copy">Manage your account, profile controls and important JobCraft policies from one clear place.</p>
+            <p className="jc-page-copy">Manage your account, data controls and important JobCraft policies from one clear place.</p>
           </div>
         </section>
 
@@ -63,20 +64,26 @@ export default async function SettingsPage() {
           </article>
 
           <article className="jc-card p-6">
-            <p className="jc-eyebrow">PRIVACY & TERMS</p>
+            <p className="jc-eyebrow">DATA & POLICIES</p>
             <h2 className="jc-section-title">Your data and policies</h2>
-            <p className="mt-3 text-sm leading-6 text-[#789087]">Review how JobCraft handles candidate information and the rules that apply to the service.</p>
+            <p className="mt-3 text-sm leading-6 text-[#789087]">Download a machine-readable copy of your JobCraft account data or review the policies that govern the service.</p>
             <div className="mt-5 flex flex-wrap gap-3">
+              <a href="/api/account/export" className="jc-button-secondary">Download my data</a>
               <Link href="/privacy" className="jc-button-secondary">Privacy policy</Link>
               <Link href="/terms" className="jc-button-secondary">Terms</Link>
             </div>
           </article>
         </section>
 
-        <section className="jc-dark-card mt-6 p-6 sm:p-8">
-          <p className="jc-eyebrow !text-[#f49a48]">MORE CONTROLS COMING LATER</p>
-          <h2 className="jc-section-title !mt-3 !text-white">Keep settings useful, not crowded.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#b5c7c0]">Notification preferences, account export and account deletion should be added here once those workflows are implemented properly. JobCraft will not show switches that do nothing.</p>
+        <section className="mt-6 rounded-[22px] border border-[#e6b8ae] bg-[#fff8f6] p-6 sm:p-8">
+          <p className="text-xs font-black uppercase tracking-[.16em] text-[#b74b3d]">Danger zone</p>
+          <h2 className="jc-section-title !mt-3">Delete your JobCraft account</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[#7b675f]">This permanently removes your JobCraft profile, resumes, applications, cover letters, tailored resumes, certificates and private uploaded files. This action cannot be undone.</p>
+          <form action={deleteAccount} className="mt-5 flex max-w-2xl flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="sr-only" htmlFor="delete-confirmation">Type DELETE to confirm</label>
+            <input id="delete-confirmation" name="confirmation" required placeholder="Type DELETE to confirm" className="jc-input sm:max-w-xs" autoComplete="off" />
+            <button className="inline-flex min-h-12 items-center justify-center rounded-[15px] border border-[#c96252] bg-[#b94c3c] px-5 font-extrabold text-white transition hover:bg-[#a23f31]">Delete account permanently</button>
+          </form>
         </section>
       </div>
     </WorkspaceShell>
