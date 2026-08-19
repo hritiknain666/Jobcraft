@@ -1,5 +1,6 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
+import AiCareerChat from "@/components/ai-career-chat";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch } from "@/lib/job-match";
 import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
@@ -67,6 +68,10 @@ export default async function CareerAssistantPage({ searchParams }: { searchPara
           <div><p className="jc-eyebrow">YOUR NEXT BEST MOVE</p><h1 className="jc-page-title">Career assistant</h1><p className="jc-page-copy">Turn your profile, match patterns and application history into a short, practical list of priorities.</p></div>
           <div className="flex flex-wrap gap-2"><Link href="/jobs" className="jc-button-primary">Explore roles →</Link><Link href="/profile" className="jc-button-secondary">Update profile</Link></div>
         </section>
+
+        <div className="mt-6">
+          <AiCareerChat jobId={selectedJob?.id ?? null} />
+        </div>
 
         {selectedJob ? (
           <section className="jc-dark-card mt-6 p-6 sm:p-8">
