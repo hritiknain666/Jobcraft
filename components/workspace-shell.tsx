@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { logout } from "@/app/auth/actions";
 import GlobalSearch from "@/components/global-search";
 
-type ActiveKey = "workspace" | "jobs" | "applications" | "profile" | "resume" | "resume-builder" | "resume-tailor" | "certificates" | "cover-letter" | "career-assistant";
+type ActiveKey = "workspace" | "jobs" | "applications" | "profile" | "settings" | "resume" | "resume-builder" | "resume-tailor" | "certificates" | "cover-letter" | "career-assistant";
 
 type WorkspaceShellProps = {
   active: ActiveKey;
@@ -18,6 +17,7 @@ const primaryNav = [
   ["jobs", "Discover roles", "/jobs", "compass"],
   ["applications", "Applications", "/applications", "briefcase"],
   ["profile", "My profile", "/profile", "user"],
+  ["settings", "Settings", "/settings", "sliders"],
 ] as const;
 
 const toolNav = [
@@ -76,13 +76,6 @@ export default function WorkspaceShell({ active, name, headline, strength = 0, a
               <b>{authenticated ? displayName : "Log in or join"}</b>
               <span>{headline?.trim() || (authenticated ? "JobCraft candidate" : "Activate your career workspace")}</span>
             </span>
-            {authenticated ? (
-              <form action={logout}>
-                <button className="jc-logout-button" aria-label="Log out" title="Log out"><NavIcon name="sliders" /></button>
-              </form>
-            ) : (
-              <Link href="/dashboard?auth=login" scroll={false} className="jc-logout-button" aria-label="Log in" title="Log in"><NavIcon name="sliders" /></Link>
-            )}
           </div>
         </div>
       </aside>
@@ -121,7 +114,6 @@ function NavIcon({ name }: { name: string }) {
   if (name === "briefcase") return <svg {...common}><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5.7C8 4.8 8.8 4 9.7 4h4.6c.9 0 1.7.8 1.7 1.7V7M3 11.5c5.7 2.2 12.3 2.2 18 0"/></svg>;
   if (name === "user") return <svg {...common}><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/><circle cx="12" cy="12" r="9"/></svg>;
   if (name === "document") return <svg {...common}><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>;
-  if (name === "pencil") return <svg {...common}><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 8.5 3 3"/></svg>;
   if (name === "wand") return <svg {...common}><path d="m4 20 11-11M13 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3ZM18 14l.7 2.1L21 17l-2.3.8L18 20l-.8-2.2L15 17l2.2-.9L18 14Z"/></svg>;
   if (name === "award") return <svg {...common}><circle cx="12" cy="9" r="5"/><path d="m9 13-2 8 5-3 5 3-2-8"/></svg>;
   if (name === "mail") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>;
