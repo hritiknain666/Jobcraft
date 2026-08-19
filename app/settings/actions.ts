@@ -4,17 +4,27 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-async function removeUserStorage(admin: ReturnType<typeof createAdminClient>, bucket: "resumes" | "certificates", userId: string) {
-  const { data, error } = await admin.storage.from(bucket).list(userId, { limit: 1000 });
-  if (error) throw error;
+async function removeStoredFiles(admin: ReturnType<typeof createAdminClient>, userId: string) {
+  const [{ data: resumes, error: resumeQueryError }, { data: certificates, error: certificateQueryError }] = await Promise.all([
+    admin.from("resumes").select("storage_path").eq("user_id", userId),
+    admin.from("certificates").select("storage_path").eq("user_id", userId),
+  ]);
 
-  const paths = (data ?? [])
-    .filter((item) => item.name && item.id)
-    .map((item) => `${userId}/${item.name}`);
+  if (resumeQueryError) throw resumeQueryError;
+  if (certificateQueryError) throw certificateQueryError;
 
-  if (paths.length === 0) return;
-  const { error: removeError } = await admin.storage.from(bucket).remove(paths);
-  if (removeError) throw removeError;
+  const resumePaths = (resumes ?? []).map((item) => item.storage_path).filter((path): path is string => Boolean(path));
+  const certificatePaths = (certificates ?? []).map((item) => item.storage_path).filter((path): path is string => Boolean(path));
+
+  if (resumePaths.length > 0) {
+    const { error } = await admin.storage.from("resumes").remove(resumePaths);
+    if (error) throw error;
+  }
+
+  if (certificatePaths.length > 0) {
+    const { error } = await admin.storage.from("certificates").remove(certificatePaths);
+    if (error) throw error;
+  }
 }
 
 export async function deleteAccount(formData: FormData) {
@@ -30,9 +40,7 @@ export async function deleteAccount(formData: FormData) {
   const admin = createAdminClient();
 
   try {
-    await removeUserStorage(admin, "resumes", user.id);
-    await removeUserStorage(admin, "certificates", user.id);
-
+    await removeStoredFiles(admin, user.id);
     const { error } = await admin.auth.admin.deleteUser(user.id);
     if (error) throw error;
   } catch (error) {
