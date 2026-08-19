@@ -48,7 +48,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <AuthNavigationBridge />
           <AuthModal authenticated={Boolean(user)} />
         </Suspense>
-        <MobileAppNav authenticated={Boolean(user)} />
+        <MobileAppNav />
       </body>
     </html>
   );
