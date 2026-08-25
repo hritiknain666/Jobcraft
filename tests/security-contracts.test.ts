@@ -1,0 +1,44 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const source = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
+
+test("maintenance RPC migration denies client roles and grants service role", () => {
+  const sql = source("supabase/migrations/20260825005246_restrict_internal_maintenance_rpcs.sql");
+  for (const name of ["jobcraft_dedupe_jobs", "jobcraft_run_feed_maintenance", "jobcraft_sync_refresh_health"]) {
+    assert.match(sql, new RegExp(`revoke execute on function public\\.${name}\\(\\) from public, anon, authenticated`, "i"));
+    assert.match(sql, new RegExp(`grant execute on function public\\.${name}\\(\\) to service_role`, "i"));
+  }
+});
+
+test("application GET is read-only and saved-role mutation lives in POST", () => {
+  const route = source("app/api/jobs/[id]/apply/route.ts");
+  const getBody = route.slice(route.indexOf("export async function GET"), route.indexOf("export async function POST"));
+  const postBody = route.slice(route.indexOf("export async function POST"));
+  assert.doesNotMatch(getBody, /applications|\.insert\(|\.update\(|\.delete\(/);
+  assert.match(postBody, /from\("applications"\)/);
+  assert.match(postBody, /\.insert\(/);
+});
+
+test("account deletion removes auth before storage and keeps a cleanup record", () => {
+  const action = source("app/settings/actions.ts");
+  assert.ok(action.indexOf('from("account_deletion_cleanup").upsert') < action.indexOf("admin.auth.admin.deleteUser"));
+  assert.ok(action.indexOf("admin.auth.admin.deleteUser") < action.lastIndexOf("removeStoredFiles"));
+  assert.match(action, /status: "failed"/);
+});
+
+test("AI rate limiting is atomic and service-role only", () => {
+  const sql = source("supabase/migrations/20260825005430_harden_account_deletion_and_ai_rate_limits.sql");
+  assert.match(sql, /for update/i);
+  assert.match(sql, /revoke execute on function public\.consume_ai_rate_limit[\s\S]*public, anon, authenticated/i);
+  assert.match(sql, /grant execute on function public\.consume_ai_rate_limit[\s\S]*service_role/i);
+});
+
+test("CSP uses a per-request nonce and strict-dynamic", () => {
+  const proxy = source("lib/supabase/proxy.ts");
+  assert.match(proxy, /crypto\.randomUUID/);
+  assert.match(proxy, /script-src 'nonce-\$\{nonce\}' 'strict-dynamic'/);
+  assert.doesNotMatch(proxy, /script-src[^\n]*unsafe-inline/);
+});

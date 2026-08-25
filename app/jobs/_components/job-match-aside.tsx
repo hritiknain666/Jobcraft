@@ -1,6 +1,9 @@
 import Link from "next/link";
+import type { calculateJobsListMatch } from "@/lib/jobs-list-match";
 
-export function JobMatchAside({ jobId, match }: { jobId: string; match: any }) {
+type JobsListMatch = ReturnType<typeof calculateJobsListMatch>;
+
+export function JobMatchAside({ jobId, match }: { jobId: string; match: JobsListMatch }) {
   const tone = match?.confidence === "limited"
     ? "text-slate-500"
     : match && match.score >= 75

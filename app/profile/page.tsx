@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
+import type { ResumeRecord } from "@/lib/types/jobcraft";
 import { saveProfile } from "./actions";
 
 type SetupStep = {
@@ -40,7 +41,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const strength = Math.round((completed / setupSteps.length) * 100);
   const displayName = profile?.full_name?.trim() || user.user_metadata?.full_name || "Your profile";
   const initials = initialsFor(displayName);
-  const primaryResume = resumes?.find((resume: any) => resume.is_primary) ?? resumes?.[0] ?? null;
+  const primaryResume = (resumes as ResumeRecord[] | null)?.find((resume) => resume.is_primary) ?? resumes?.[0] ?? null;
 
   return (
     <WorkspaceShell active="profile" name={displayName} headline={profile?.headline} strength={strength}>

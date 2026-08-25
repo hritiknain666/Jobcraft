@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+type RouteContext = { params: Promise<{ id: string }> };
+
+async function applicationTarget(id: string) {
   const supabase = await createClient();
   const { data: job } = await supabase
     .from("jobs")
@@ -16,14 +17,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .neq("source", "JobCraft")
     .maybeSingle();
 
-  const target = safeExternalUrl(job?.apply_url);
+  return { supabase, target: safeExternalUrl(job?.apply_url) };
+}
+
+function redirectToTarget(request: NextRequest, id: string, target: string | null) {
   if (!target) {
     return NextResponse.redirect(new URL(`/jobs/${id}?apply=unavailable`, request.url), 302);
   }
 
-  // Opening an employer/provider page is not proof that an application was
-  // submitted. For signed-in users we therefore add an untracked role to the
-  // application plan as Saved, but never overwrite a more advanced status.
+  const response = NextResponse.redirect(target, 302);
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  const { target } = await applicationTarget(id);
+  return redirectToTarget(request, id, target);
+}
+
+export async function POST(request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  const { supabase, target } = await applicationTarget(id);
+
+  if (!target) return redirectToTarget(request, id, null);
+
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     const { data: existing } = await supabase
@@ -44,8 +63,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
   }
 
-  const response = NextResponse.redirect(target, 302);
-  response.headers.set("Referrer-Policy", "no-referrer");
-  response.headers.set("Cache-Control", "no-store");
-  return response;
+  return redirectToTarget(request, id, target);
 }

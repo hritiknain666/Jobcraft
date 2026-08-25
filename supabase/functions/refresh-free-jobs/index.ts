@@ -19,7 +19,20 @@ type JobRow = {
   posted_at: string;
 };
 
-type SourceResult = { source: string; jobs: JobRow[]; error?: string };
+type SourceResult = { source: string; jobs: JobRow[]; error?: string; rateLimited?: boolean };
+
+type LocationRestriction = string | {
+  alpha2?: unknown;
+  countryCode?: unknown;
+  name?: unknown;
+  slug?: unknown;
+};
+
+class HttpError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
 
 const SKILLS: Array<[string, RegExp]> = [
   ["SQL", /\bsql\b/i], ["Power BI", /\bpower\s*bi\b/i], ["Excel", /\b(?:microsoft\s+|ms\s+)?excel\b/i],
@@ -99,8 +112,33 @@ function experienceRange(value: unknown): [number | null, number | null] {
 
 async function fetchJson(url: string, init: RequestInit = {}) {
   const response = await fetch(url, { ...init, headers: { "User-Agent": "JobCraft/1.0 job discovery for candidates", ...(init.headers ?? {}) }, signal: AbortSignal.timeout(20_000) });
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  if (!response.ok) throw new HttpError(`${response.status} ${response.statusText}`, response.status);
   return await response.json();
+}
+
+function retryDelayMs(retryAfter: string | null, attempt: number) {
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, 30_000);
+    const dateDelay = new Date(retryAfter).getTime() - Date.now();
+    if (Number.isFinite(dateDelay) && dateDelay > 0) return Math.min(dateDelay, 30_000);
+  }
+  return Math.min(500 * 2 ** attempt, 4_000);
+}
+
+async function fetchIndianApiJson(apiKey: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch("https://jobs.indianapi.in/jobs?limit=50", {
+      headers: { "User-Agent": "JobCraft/1.0 job discovery for candidates", "X-Api-Key": apiKey, Accept: "application/json" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (response.ok) return await response.json();
+    if ((response.status !== 429 && response.status < 500) || attempt === 2) {
+      throw new HttpError(`${response.status} ${response.statusText}`, response.status);
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response.headers.get("Retry-After"), attempt)));
+  }
+  throw new HttpError("IndianAPI retries exhausted", 429);
 }
 
 async function remotive(): Promise<SourceResult> {
@@ -133,7 +171,7 @@ async function jobicy(): Promise<SourceResult> {
   } catch (e) { return { source: "Jobicy", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
 }
 
-function restrictionText(restriction: any) {
+function restrictionText(restriction: LocationRestriction) {
   if (typeof restriction === "string") return restriction;
   return String(restriction?.alpha2 ?? restriction?.countryCode ?? restriction?.name ?? restriction?.slug ?? "");
 }
@@ -145,7 +183,7 @@ async function himalayas(): Promise<SourceResult> {
     const jobs: JobRow[] = [];
     for (const raw of rows) {
       const restrictions = Array.isArray(raw?.locationRestrictions) ? raw.locationRestrictions : [];
-      const eligible = restrictions.length === 0 || restrictions.some((r: any) => /^(in|india)$/i.test(restrictionText(r).trim()) || /\bindia\b/i.test(restrictionText(r)));
+      const eligible = restrictions.length === 0 || restrictions.some((r: LocationRestriction) => /^(in|india)$/i.test(restrictionText(r).trim()) || /\bindia\b/i.test(restrictionText(r)));
       if (!eligible) continue;
       const title = text(raw?.title, 300), company = text(raw?.companyName, 300), description = text(raw?.description), applyUrl = safeUrl(raw?.applicationLink);
       if (!raw?.guid || !title || !company || description.length < 40 || !applyUrl) continue;
@@ -181,7 +219,7 @@ async function remoteOk(): Promise<SourceResult> {
 
 async function indianApi(apiKey: string): Promise<SourceResult> {
   try {
-    const payload = await fetchJson("https://jobs.indianapi.in/jobs?limit=50", { headers: { "X-Api-Key": apiKey, Accept: "application/json" } });
+    const payload = await fetchIndianApiJson(apiKey);
     const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.jobs) ? payload.jobs : Array.isArray(payload?.data) ? payload.data : [];
     const jobs: JobRow[] = [];
     for (const raw of rows) {
@@ -194,7 +232,10 @@ async function indianApi(apiKey: string): Promise<SourceResult> {
       jobs.push({ source: "IndianAPI", external_id: String(id), title, company, location: text(raw?.location, 300) || "India", work_mode: inferMode(title, description), experience_min: experienceMin, experience_max: experienceMax, salary_min_lpa: null, salary_max_lpa: null, skills: skillsFor(title, description, sourceSkills), description, apply_url: applyUrl, is_active: true, posted_at: validIso(raw?.posted_date ?? raw?.posted_at ?? raw?.date_posted) });
     }
     return { source: "IndianAPI", jobs };
-  } catch (e) { return { source: "IndianAPI", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
+  } catch (e) {
+    if (e instanceof HttpError && e.status === 429) return { source: "IndianAPI", jobs: [], rateLimited: true };
+    return { source: "IndianAPI", jobs: [], error: e instanceof Error ? e.message : "Unknown error" };
+  }
 }
 
 async function theirStack(apiKey: string): Promise<SourceResult> {
@@ -252,6 +293,10 @@ Deno.serve(async (req) => {
     const summary: Record<string, unknown> = {};
     let failed = 0, imported = 0;
     for (const result of results) {
+      if (result.rateLimited) {
+        summary[result.source] = { source: result.source, display_name: result.source, configured: true, enabled: true, fetched: 0, upserted: 0, rate_limited: true };
+        continue;
+      }
       if (result.error) {
         failed += 1;
         summary[result.source] = { source: result.source, display_name: result.source, configured: true, enabled: true, fetched: 0, upserted: 0, error: result.error };

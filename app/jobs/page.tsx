@@ -6,6 +6,7 @@ import { getProviderAttribution } from "@/lib/job-sources/attribution";
 import { getJobFacets, type JobFacets } from "@/lib/job-sources/facets";
 import { normalizeLocationSearch } from "@/lib/job-sources/location-search";
 import { saveApplication } from "@/app/applications/actions";
+import type { JobRecord } from "@/lib/types/jobcraft";
 
 const EMPTY_FACETS: JobFacets = { titles: [], locations: [], skills: [], workModes: [] };
 const PAGE_SIZE = 24;
@@ -71,14 +72,14 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const trackedByJob = new Map<string, string>();
 
   if (user && pageJobs.length) {
-    const { data: tracked } = await supabase.from("applications").select("job_id,status").eq("user_id", user.id).in("job_id", pageJobs.map((job: any) => job.id));
+    const { data: tracked } = await supabase.from("applications").select("job_id,status").eq("user_id", user.id).in("job_id", pageJobs.map((job: JobRecord) => job.id));
     for (const item of tracked ?? []) if (item.job_id) trackedByJob.set(String(item.job_id), String(item.status ?? "Saved"));
   }
 
   const profileStrength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
   const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const newTodayCount = pageJobs.filter((job: any) => job.posted_at && new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(job.posted_at)) === todayKey).length;
-  const strongMatches = profile ? pageJobs.map((job: any) => calculateJobsListMatch(job, profile)).filter((match) => match && match.score >= 75).length : 0;
+  const newTodayCount = pageJobs.filter((job: JobRecord) => job.posted_at && new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(job.posted_at)) === todayKey).length;
+  const strongMatches = profile ? pageJobs.map((job: JobRecord) => calculateJobsListMatch(job, profile)).filter((match) => match && match.score >= 75).length : 0;
 
   return (
     <WorkspaceShell active="jobs" authenticated={Boolean(user)} name={profile?.full_name} headline={profile?.headline} strength={profileStrength}>
@@ -114,7 +115,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         {error ? <div className="jc-card p-5 text-red-700">Could not load jobs: {error.message}</div> : null}
 
         <section className="jc-role-grid">
-          {pageJobs.map((job: any) => {
+          {pageJobs.map((job: JobRecord) => {
             const match = calculateJobsListMatch(job, profile);
             const attribution = getProviderAttribution(job.source, job.apply_url);
             const trackedStatus = trackedByJob.get(String(job.id));

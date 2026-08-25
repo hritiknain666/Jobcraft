@@ -12,6 +12,7 @@ import {
   isAdzunaPublishingReady,
   isFreePublicSourceEnabled,
 } from "../lib/job-sources/config";
+import { retryDelayMs } from "../lib/job-sources/fetch-indianapi";
 import { extractJobMetadata } from "../lib/job-sources/extract-metadata";
 import { normalizeJob } from "../lib/job-sources/normalize";
 import { normalizeArbeitnowIndia } from "../lib/job-sources/providers/arbeitnow";
@@ -212,4 +213,11 @@ test("TheirStack converts only annual INR salary values to LPA", () => {
   assert.equal(jobs[0].salaryMaxLpa, 30);
   assert.equal(jobs[0].workMode, "Remote");
   assert.ok(jobs[0].skills.some((skill) => skill.toLowerCase() === "snowflake"));
+});
+
+test("IndianAPI retry backoff respects Retry-After and exponential delays", () => {
+  assert.equal(retryDelayMs("2", 0, 0), 2_000);
+  assert.equal(retryDelayMs(null, 0, 0), 500);
+  assert.equal(retryDelayMs(null, 2, 0), 2_000);
+  assert.equal(retryDelayMs("999", 0, 0), 30_000);
 });

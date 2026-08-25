@@ -12,6 +12,8 @@
   },
   "include": [
     "lib/skill-match.ts",
+    "lib/auth/navigation.ts",
+    "lib/uploads/file-validation.ts",
     "lib/job-match.ts",
     "lib/job-sources/config.ts",
     "lib/job-sources/extract-metadata.ts",

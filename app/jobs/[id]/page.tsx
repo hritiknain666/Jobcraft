@@ -7,6 +7,7 @@ import { getProviderAttribution } from "@/lib/job-sources/attribution";
 import { createTailoredResume } from "@/app/resume/tailor/actions";
 import { saveApplication } from "@/app/applications/actions";
 import { createCoverLetter } from "@/app/cover-letter/actions";
+import type { ApplicationRecord, ProfileRecord, ResumeRecord } from "@/lib/types/jobcraft";
 
 export default async function JobDetailsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ apply?: string }> }) {
   const [{ id }, queryParams] = await Promise.all([params, searchParams]);
@@ -15,18 +16,18 @@ export default async function JobDetailsPage({ params, searchParams }: { params:
   if (!job) notFound();
 
   const { data: { user } } = await supabase.auth.getUser();
-  let profile: any = null;
-  let resumes: any[] = [];
-  let application: any = null;
+  let profile: ProfileRecord | null = null;
+  let resumes: ResumeRecord[] = [];
+  let application: Pick<ApplicationRecord, "id" | "status"> | null = null;
   if (user) {
     const [profileResult, resumeResult, appResult] = await Promise.all([
       supabase.from("profiles").select("full_name,headline,skills,experience_years,city,preferred_work_modes,target_roles").eq("id", user.id).maybeSingle(),
       supabase.from("resumes").select("id,name,is_primary").eq("user_id", user.id).order("is_primary", { ascending: false }),
       supabase.from("applications").select("id,status").eq("user_id", user.id).eq("job_id", id).maybeSingle(),
     ]);
-    profile = profileResult.data;
-    resumes = resumeResult.data ?? [];
-    application = appResult.data;
+    profile = profileResult.data as ProfileRecord | null;
+    resumes = (resumeResult.data ?? []) as ResumeRecord[];
+    application = appResult.data as Pick<ApplicationRecord, "id" | "status"> | null;
   }
 
   const match = calculateJobMatch({
@@ -73,7 +74,7 @@ export default async function JobDetailsPage({ params, searchParams }: { params:
                 {!application ? <form action={saveApplication}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="status" value="Saved" /><button className="w-full rounded-[14px] bg-[#f49a48] px-5 py-3.5 text-sm font-black text-[#173f33]">1 · Save role</button></form> : <Link href="/applications" className="w-full rounded-[14px] bg-[#e9f4ed] px-5 py-3.5 text-center text-sm font-black text-[#173f33] no-underline">Saved · open tracker</Link>}
                 <a href="#resume-for-role" className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white no-underline">2 · Tailor resume</a>
                 <form action={createCoverLetter}><input type="hidden" name="jobId" value={job.id} /><button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">3 · Create cover letter</button></form>
-                {job.apply_url && !isSample ? <a href={`/api/jobs/${job.id}/apply`} target="_blank" rel="noopener noreferrer" className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white no-underline">4 · View / apply ↗</a> : <span className="w-full rounded-[14px] bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white/50">Application link unavailable</span>}
+                {job.apply_url && !isSample ? <form action={`/api/jobs/${job.id}/apply`} method="post" target="_blank"><button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white">4 · View / apply ↗</button></form> : <span className="w-full rounded-[14px] bg-white/5 px-5 py-3.5 text-center text-sm font-black text-white/50">Application link unavailable</span>}
                 {application?.status === "Saved" ? <form action={saveApplication}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="status" value="Applied" /><button className="w-full rounded-[14px] border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-black text-white">5 · Mark as applied</button></form> : application && application.status !== "Saved" ? <Link href="/applications" className="text-center text-xs font-extrabold text-[#f49a48] no-underline">Tracker · {application.status} →</Link> : null}
               </div></article>
 

@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateCareerAssistantResponse, isAiConfigured } from "@/lib/ai/openai";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_PROMPT_LENGTH = 2_000;
+const RATE_LIMIT = 10;
+const RATE_WINDOW_SECONDS = 10 * 60;
+
+type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+  retry_after_seconds: number;
+};
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -21,6 +30,26 @@ export async function POST(request: Request) {
   const jobId = String(body.jobId ?? "").trim();
   if (!prompt) return NextResponse.json({ error: "Ask a career question first." }, { status: 400 });
   if (prompt.length > MAX_PROMPT_LENGTH) return NextResponse.json({ error: "Question is too long." }, { status: 400 });
+
+  const admin = createAdminClient();
+  const { data: rateRows, error: rateError } = await admin.rpc("consume_ai_rate_limit", {
+    p_user_id: user.id,
+    p_limit: RATE_LIMIT,
+    p_window_seconds: RATE_WINDOW_SECONDS,
+  });
+  if (rateError) {
+    console.error("Career assistant rate limit check failed", rateError);
+    return NextResponse.json({ error: "The AI assistant is temporarily unavailable." }, { status: 503 });
+  }
+
+  const rate = (Array.isArray(rateRows) ? rateRows[0] : rateRows) as RateLimitResult | null;
+  if (!rate?.allowed) {
+    const retryAfter = Math.max(1, rate?.retry_after_seconds ?? RATE_WINDOW_SECONDS);
+    return NextResponse.json(
+      { error: "Too many AI requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(retryAfter), "X-RateLimit-Remaining": "0" } }
+    );
+  }
 
   const [{ data: profile }, { data: applications }, { data: job }] = await Promise.all([
     supabase
@@ -87,7 +116,10 @@ export async function POST(request: Request) {
       instruction,
       userPrompt: `JobCraft context:\n${JSON.stringify(context)}\n\nUser question:\n${prompt}`,
     });
-    return NextResponse.json({ answer: result.text, model: result.model });
+    return NextResponse.json(
+      { answer: result.text, model: result.model },
+      { headers: { "X-RateLimit-Remaining": String(rate.remaining) } }
+    );
   } catch (error) {
     console.error("Career assistant request failed", error);
     return NextResponse.json({ error: "The AI assistant could not answer right now." }, { status: 502 });

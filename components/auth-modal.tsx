@@ -1,18 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/auth/navigation";
 
 type AuthModalProps = { authenticated: boolean };
 
 const protectedPaths = ["/jobs", "/applications", "/profile", "/certificates", "/cover-letter", "/resume", "/resumes", "/career-assistant"];
-
-function safeNextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/dashboard";
-  return value;
-}
 
 export default function AuthModal({ authenticated }: AuthModalProps) {
   const router = useRouter();
@@ -27,7 +23,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
 
-  function hrefFor(nextMode?: "login" | "signup", nextTarget?: string | null) {
+  const hrefFor = useCallback((nextMode?: "login" | "signup", nextTarget?: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (nextMode) {
       params.set("auth", nextMode);
@@ -38,7 +34,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
     }
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
-  }
+  }, [pathname, searchParams]);
 
   function emailRedirectTo() {
     const params = new URLSearchParams({ message: "Email confirmed. You can log in now." });
@@ -77,7 +73,7 @@ export default function AuthModal({ authenticated }: AuthModalProps) {
 
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
-  }, [authenticated, pathname, router, searchParams]);
+  }, [authenticated, hrefFor, router]);
 
   useEffect(() => {
     if (!isOpen) return;

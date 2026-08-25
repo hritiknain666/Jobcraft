@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeUploadFilename, validateUpload } from "@/lib/uploads/file-validation";
 
 export async function uploadResume(formData: FormData) {
   const supabase = await createClient();
@@ -12,14 +13,12 @@ export async function uploadResume(formData: FormData) {
   const file = formData.get("file") as File | null;
   const name = String(formData.get("name") ?? "My Resume").trim() || "My Resume";
   if (!file || file.size === 0) redirect("/resume?error=Choose+a+PDF+or+DOCX+file");
-  if (file.size > 5 * 1024 * 1024) redirect("/resume?error=Resume+must+be+5MB+or+smaller");
+  const validation = await validateUpload(file, "resume");
+  if (!validation.valid) redirect(`/resume?error=${encodeURIComponent(validation.error)}`);
 
-  const ext = file.name.split(".").pop()?.toLowerCase();
-  if (!ext || !["pdf", "docx"].includes(ext)) redirect("/resume?error=Only+PDF+and+DOCX+files+are+supported");
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const safeName = safeUploadFilename(file.name);
   const path = `${user.id}/${crypto.randomUUID()}-${safeName}`;
-  const { error: uploadError } = await supabase.storage.from("resumes").upload(path, file, { upsert: false });
+  const { error: uploadError } = await supabase.storage.from("resumes").upload(path, file, { upsert: false, contentType: validation.contentType });
   if (uploadError) redirect(`/resume?error=${encodeURIComponent(uploadError.message)}`);
 
   const { error } = await supabase.from("resumes").insert({ user_id: user.id, name, storage_path: path, is_primary: false });

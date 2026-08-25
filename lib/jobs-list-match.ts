@@ -8,7 +8,15 @@ export type JobsListProfile = {
   preferred_work_modes?: string[] | null;
 };
 
-export function calculateJobsListMatch(job: any, profile: JobsListProfile | null) {
+export type JobsListJob = {
+  title: string;
+  skills?: string[] | null;
+  experience_min?: number | null;
+  location?: string | null;
+  work_mode?: string | null;
+};
+
+export function calculateJobsListMatch(job: JobsListJob, profile: JobsListProfile | null) {
   if (!profile) return null;
 
   const match = calculateJobMatch({

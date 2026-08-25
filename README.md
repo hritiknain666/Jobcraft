@@ -10,7 +10,7 @@ Implemented and production-verified:
 - Password recovery flow
 - Browse-first product experience; login is required only for personal/save actions
 - Jobs search and filtering with database-backed pagination
-- 45-day freshness policy so stale listings stop appearing in search/facets
+- Provider-aware freshness: aggregator listings older than 45 days are deactivated, while Greenhouse/Lever jobs stay active only while present in successful employer snapshots
 - Skill filtering that can fall back to title/description text when a provider has no structured skill array
 - Shared transparent job-match scoring with evidence coverage/confidence
 - Resume, tailoring, cover-letter, certificate and career-assistance surfaces

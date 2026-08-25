@@ -3,14 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/auth/navigation";
 
 const FALLBACK_SITE_URL = "https://jobcraft.hritiknain666-35e.workers.dev";
-
-function safeNextPath(value: FormDataEntryValue | string | null) {
-  const next = String(value ?? "").trim();
-  if (!next.startsWith("/") || next.startsWith("//")) return "/dashboard";
-  return next;
-}
 
 function authUrl(path: "/auth/login" | "/auth/signup", values: Record<string, string | undefined>) {
   const params = new URLSearchParams();

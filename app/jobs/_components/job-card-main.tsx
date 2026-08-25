@@ -2,7 +2,9 @@ function initials(company: string) {
   return company.split(" ").filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 }
 
-export function JobCardMain({ job, match }: { job: any; match: any }) {
+type JobsListMatch = ReturnType<typeof calculateJobsListMatch>;
+
+export function JobCardMain({ job, match }: { job: JobRecord; match: JobsListMatch }) {
   const source = String(job.source ?? "").trim();
   const isSample = source === "JobCraft";
   const isAdzuna = source.toLowerCase() === "adzuna";
@@ -35,3 +37,5 @@ export function JobCardMain({ job, match }: { job: any; match: any }) {
     </div>
   );
 }
+import type { JobRecord } from "@/lib/types/jobcraft";
+import type { calculateJobsListMatch } from "@/lib/jobs-list-match";

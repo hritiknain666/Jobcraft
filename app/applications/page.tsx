@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
+import type { ApplicationRecord } from "@/lib/types/jobcraft";
 import { deleteApplication, updateApplicationStatus } from "./actions";
 
 const statuses = ["Saved", "Applied", "Screening", "Interview", "Offer", "Rejected"];
@@ -15,11 +16,11 @@ export default async function ApplicationsPage() {
     supabase.from("profiles").select("full_name,headline,city,experience_years,skills,target_roles,preferred_work_modes").eq("id", user.id).maybeSingle(),
   ]);
 
-  const items = applications ?? [];
-  const counts = Object.fromEntries(statuses.map((status) => [status, items.filter((item: any) => item.status === status).length]));
+  const items = (applications ?? []) as unknown as ApplicationRecord[];
+  const counts = Object.fromEntries(statuses.map((status) => [status, items.filter((item) => item.status === status).length]));
   const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
-  const appliedLane = items.filter((item: any) => ["Applied", "Screening"].includes(item.status));
-  const closed = items.filter((item: any) => item.status === "Rejected");
+  const appliedLane = items.filter((item) => ["Applied", "Screening"].includes(item.status));
+  const closed = items.filter((item) => item.status === "Rejected");
 
   return (
     <WorkspaceShell active="applications" name={profile?.full_name} headline={profile?.headline} strength={strength}>
@@ -42,10 +43,10 @@ export default async function ApplicationsPage() {
         </div>
 
         <section className="jc-board" aria-label="Application pipeline">
-          <BoardColumn title="Saved" note="Worth a closer look" items={items.filter((item: any) => item.status === "Saved")} />
+          <BoardColumn title="Saved" note="Worth a closer look" items={items.filter((item) => item.status === "Saved")} />
           <BoardColumn title="Applied" note="You made the move" items={appliedLane} />
-          <BoardColumn title="Interview" note="Conversations in motion" items={items.filter((item: any) => item.status === "Interview")} />
-          <BoardColumn title="Offer" note="A good problem to have" items={items.filter((item: any) => item.status === "Offer")} />
+          <BoardColumn title="Interview" note="Conversations in motion" items={items.filter((item) => item.status === "Interview")} />
+          <BoardColumn title="Offer" note="A good problem to have" items={items.filter((item) => item.status === "Offer")} />
         </section>
 
         {closed.length ? (
@@ -55,7 +56,7 @@ export default async function ApplicationsPage() {
               <span className="text-xs font-bold text-[#789087]">{closed.length} closed</span>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {closed.map((item: any) => <ApplicationCard key={item.id} item={item} compact />)}
+              {closed.map((item) => <ApplicationCard key={item.id} item={item} compact />)}
             </div>
           </section>
         ) : null}
@@ -64,7 +65,7 @@ export default async function ApplicationsPage() {
   );
 }
 
-function BoardColumn({ title, note, items }: { title: string; note: string; items: any[] }) {
+function BoardColumn({ title, note, items }: { title: string; note: string; items: ApplicationRecord[] }) {
   return (
     <div className="jc-board-column">
       <div className="jc-board-title"><b>{title}</b><span className="jc-board-count">{items.length}</span></div>
@@ -74,7 +75,7 @@ function BoardColumn({ title, note, items }: { title: string; note: string; item
   );
 }
 
-function ApplicationCard({ item, compact = false }: { item: any; compact?: boolean }) {
+function ApplicationCard({ item, compact = false }: { item: ApplicationRecord; compact?: boolean }) {
   const job = item.jobs;
   return (
     <article className={`jc-application-card ${compact ? "mt-0" : ""}`}>

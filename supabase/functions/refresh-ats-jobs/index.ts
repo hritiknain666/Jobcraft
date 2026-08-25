@@ -30,6 +30,33 @@ type FeedResult = {
   configured?: boolean;
 };
 
+type LeverPosting = {
+  id?: unknown;
+  text?: unknown;
+  country?: unknown;
+  openingPlain?: unknown;
+  descriptionPlain?: unknown;
+  additionalPlain?: unknown;
+  applyUrl?: unknown;
+  hostedUrl?: unknown;
+  workplaceType?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  categories?: {
+    allLocations?: unknown[];
+    location?: unknown;
+    team?: unknown;
+    department?: unknown;
+    commitment?: unknown;
+  };
+  salaryRange?: {
+    min?: unknown;
+    max?: unknown;
+    currency?: unknown;
+    interval?: unknown;
+  };
+};
+
 const GREENHOUSE = [{ token: "phonepe", company: "PhonePe" }] as const;
 const LEVER = [
   { site: "hevodata", company: "Hevo Data" },
@@ -171,7 +198,7 @@ async function greenHouseFeed(token: string, companyFallback: string): Promise<F
 async function leverFeed(site: string, company: string): Promise<FeedResult> {
   const key = `Lever:${site}`;
   try {
-    const rows: any[] = [];
+    const rows: LeverPosting[] = [];
     const pageSize = 100;
     for (let page = 0; page < 10; page += 1) {
       const url = new URL(`https://api.lever.co/v0/postings/${encodeURIComponent(site)}`);
@@ -180,7 +207,7 @@ async function leverFeed(site: string, company: string): Promise<FeedResult> {
       url.searchParams.set("limit", String(pageSize));
       const batch = await fetchJson(url.toString());
       if (!Array.isArray(batch)) throw new Error("Unexpected Lever response");
-      rows.push(...batch);
+      rows.push(...(batch as LeverPosting[]));
       if (batch.length < pageSize) break;
     }
 

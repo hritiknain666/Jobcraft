@@ -3,15 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-
-const allowedTypes = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
-
-function safeFilename(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120);
-}
+import { safeUploadFilename, validateUpload } from "@/lib/uploads/file-validation";
 
 export async function uploadResume(formData: FormData) {
   const supabase = await createClient();
@@ -22,19 +14,15 @@ export async function uploadResume(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     redirect("/resumes?error=Please select a resume file");
   }
-  if (!allowedTypes.has(file.type)) {
-    redirect("/resumes?error=Only PDF and DOCX resumes are supported");
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    redirect("/resumes?error=Resume must be 5 MB or smaller");
-  }
+  const validation = await validateUpload(file, "resume");
+  if (!validation.valid) redirect(`/resumes?error=${encodeURIComponent(validation.error)}`);
 
-  const filename = `${crypto.randomUUID()}-${safeFilename(file.name)}`;
+  const filename = `${crypto.randomUUID()}-${safeUploadFilename(file.name)}`;
   const path = `${user.id}/${filename}`;
 
   const { error: uploadError } = await supabase.storage
     .from("resumes")
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, file, { upsert: false, contentType: validation.contentType });
 
   if (uploadError) redirect(`/resumes?error=${encodeURIComponent(uploadError.message)}`);
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
+import type { JobRecord, ProfileRecord } from "@/lib/types/jobcraft";
 
 const TOOLS = [
   { title: "Discover roles", href: "/jobs", description: "Search live jobs by title, company, skill, location, salary and work mode.", keywords: "jobs roles vacancies search skill company location salary" },
@@ -34,7 +35,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  let profile: any = null;
+  let profile: ProfileRecord | null = null;
   if (user) {
     const { data } = await supabase
       .from("profiles")
@@ -46,7 +47,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const toolResults = TOOLS.filter((tool) => matchesTool(q, tool));
 
-  let jobs: any[] = [];
+  let jobs: JobRecord[] = [];
   let jobError: string | null = null;
   if (q) {
     const { data, error } = await supabase
@@ -58,7 +59,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       .textSearch("search_document", q, { type: "websearch", config: "simple" })
       .order("posted_at", { ascending: false })
       .limit(30);
-    jobs = data ?? [];
+    jobs = (data ?? []) as JobRecord[];
     jobError = error?.message ?? null;
   }
 

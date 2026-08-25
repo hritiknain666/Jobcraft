@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
+import type { ResumeRecord } from "@/lib/types/jobcraft";
 import { deleteResume, setPrimaryResume, uploadResume } from "./actions";
 
 export default async function ResumePage({ searchParams }: { searchParams: Promise<{ error?: string; uploaded?: string }> }) {
@@ -16,9 +17,10 @@ export default async function ResumePage({ searchParams }: { searchParams: Promi
     supabase.from("certificates").select("id", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
 
-  const builtCount = resumes?.filter((resume: any) => !resume.storage_path).length ?? 0;
-  const uploadedCount = resumes?.filter((resume: any) => Boolean(resume.storage_path)).length ?? 0;
-  const primary = resumes?.find((resume: any) => resume.is_primary) ?? resumes?.[0] ?? null;
+  const resumeItems = (resumes ?? []) as ResumeRecord[];
+  const builtCount = resumeItems.filter((resume) => !resume.storage_path).length;
+  const uploadedCount = resumeItems.filter((resume) => Boolean(resume.storage_path)).length;
+  const primary = resumeItems.find((resume) => resume.is_primary) ?? resumeItems[0] ?? null;
   const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
   return (
@@ -61,7 +63,7 @@ export default async function ResumePage({ searchParams }: { searchParams: Promi
           <section>
             <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="jc-eyebrow">YOUR VERSIONS</p><h2 className="jc-section-title">Resumes ready for your search</h2></div><Link href="/resume/builder" className="jc-text-link">Create new ↗</Link></div>
             <div className="jc-tool-list">
-              {resumes?.length ? resumes.map((resume: any) => (
+              {resumeItems.length ? resumeItems.map((resume) => (
                 <article key={resume.id} className="jc-tool-list-item">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-4"><span className="jc-file-icon">▤</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="m-0 truncate text-base font-extrabold text-[#173f33]">{resume.name}</h3>{resume.is_primary ? <span className="jc-ready-pill">Primary</span> : null}</div><p className="mt-1 text-xs text-[#789087]">{resume.storage_path ? "Uploaded resume" : "JobCraft resume"} · {new Date(resume.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div>

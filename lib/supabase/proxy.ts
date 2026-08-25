@@ -6,8 +6,37 @@ const publicPreviewRewrites: Record<string, string> = {
   "/resume/tailor": "/preview/resume-tailor",
 };
 
+export function contentSecurityPolicy(nonce: string) {
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const csp = contentSecurityPolicy(nonce);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const secure = (nextResponse: NextResponse) => {
+    nextResponse.headers.set("Content-Security-Policy", csp);
+    return nextResponse;
+  };
+
+  let response = secure(NextResponse.next({ request: { headers: requestHeaders } }));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +48,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = secure(NextResponse.next({ request: { headers: requestHeaders } }));
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -42,7 +71,7 @@ export async function updateSession(request: NextRequest) {
   if (!authenticated && previewPath) {
     const previewUrl = request.nextUrl.clone();
     previewUrl.pathname = previewPath;
-    const rewritten = NextResponse.rewrite(previewUrl);
+    const rewritten = secure(NextResponse.rewrite(previewUrl, { request: { headers: requestHeaders } }));
     response.cookies.getAll().forEach((cookie) => rewritten.cookies.set(cookie));
     return rewritten;
   }

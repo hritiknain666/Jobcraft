@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node -e \"require('fs').rmSync('.test-build',{recursive:true,force:true})\" && tsc -p tsconfig.tests.json && node --test .test-build/tests/job-match.test.js .test-build/tests/job-sources.test.js .test-build/tests/job-quality.test.js",
+    "lint": "eslint . --max-warnings=0",
+    "test": "node -e \"require('fs').rmSync('.test-build',{recursive:true,force:true})\" && tsc -p tsconfig.tests.json && node --test .test-build/tests/*.test.js",
     "start": "next start",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -24,6 +25,8 @@
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.3.1",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "wrangler": "4.123.0"

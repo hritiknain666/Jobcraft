@@ -15,7 +15,7 @@ Completed:
 - [x] Arbeitnow connector enabled with India-location filtering
 - [x] `(source, external_id)` deduplication enforced
 - [x] External application URLs retained
-- [x] Stale external roles older than the freshness window are removed from active search
+- [x] Aggregator roles older than 45 days are removed; Greenhouse/Lever roles follow successful employer snapshots
 - [x] Internal refresh authorization/audit tables have RLS enabled with no browser/client access
 - [x] Provider attribution is visible on supported external listings
 
@@ -91,7 +91,7 @@ Completed/currently automated:
 - [x] Live-job provider/source labels and application links
 - [x] Database duplicate check for provider identities
 - [x] No active external job is missing an application URL in the current dataset
-- [x] No active external job is older than the freshness window in the current dataset
+- [x] No active aggregator job exceeds 45 days; ATS jobs remain only while present in employer snapshots
 
 Still worth repeating immediately before broad public promotion:
 

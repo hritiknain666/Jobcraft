@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeUploadFilename, validateUpload } from "@/lib/uploads/file-validation";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png"]);
 
 export async function saveCertificate(formData: FormData) {
   const supabase = await createClient();
@@ -25,12 +24,11 @@ export async function saveCertificate(formData: FormData) {
 
   let storagePath: string | null = null;
   if (file && file.size > 0) {
-    if (file.size > MAX_FILE_SIZE) redirect("/certificates?error=Certificate+file+must+be+5MB+or+smaller");
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) redirect("/certificates?error=Only+PDF,+JPG,+JPEG+and+PNG+files+are+supported");
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const validation = await validateUpload(file, "certificate");
+    if (!validation.valid) redirect(`/certificates?error=${encodeURIComponent(validation.error)}`);
+    const safeName = safeUploadFilename(file.name);
     storagePath = `${user.id}/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage.from("certificates").upload(storagePath, file, { upsert: false });
+    const { error: uploadError } = await supabase.storage.from("certificates").upload(storagePath, file, { upsert: false, contentType: validation.contentType });
     if (uploadError) redirect(`/certificates?error=${encodeURIComponent(uploadError.message)}`);
   }
 

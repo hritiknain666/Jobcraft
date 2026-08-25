@@ -33,9 +33,9 @@ jobs:
           fi
 
           STATUS="$(curl --fail --silent --show-error "${SITE_URL}/api/jobs/provider-status")"
-          SERVER_READY="$(STATUS_JSON="${STATUS}" node -e 'const s=JSON.parse(process.env.STATUS_JSON); process.stdout.write(s?.server?.importSecretReady && s?.server?.databaseWriteReady ? "yes" : "no")')"
+          SERVER_READY="$(STATUS_JSON="${STATUS}" node -e 'const s=JSON.parse(process.env.STATUS_JSON); const valid=typeof s?.status==="string" && Array.isArray(s?.sources) && typeof s?.checkedAt==="string"; process.stdout.write(valid ? "yes" : "no")')"
           if [ "${SERVER_READY}" != "yes" ]; then
-            echo "::error::The deployed Next.js provider pipeline is not configured for manual imports."
+            echo "::error::The provider-status endpoint returned an unexpected response."
             exit 1
           fi
 

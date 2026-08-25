@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
+import type { CertificateRecord } from "@/lib/types/jobcraft";
 import { deleteCertificate, saveCertificate } from "./actions";
 
 export default async function CertificatesPage({ searchParams }: { searchParams: Promise<{ error?: string; added?: string }> }) {
@@ -15,7 +16,8 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
     supabase.from("profiles").select("full_name,headline,city,experience_years,skills,target_roles,preferred_work_modes").eq("id", user.id).maybeSingle(),
   ]);
 
-  const proofCount = certificates?.filter((certificate: any) => Boolean(certificate.storage_path)).length ?? 0;
+  const certificateItems = (certificates ?? []) as CertificateRecord[];
+  const proofCount = certificateItems.filter((certificate) => Boolean(certificate.storage_path)).length;
   const strength = profile ? Math.round(([profile.full_name, profile.headline, profile.city, profile.experience_years !== null && profile.experience_years !== undefined, (profile.skills?.length ?? 0) > 0, (profile.target_roles?.length ?? 0) > 0, (profile.preferred_work_modes?.length ?? 0) > 0].filter(Boolean).length / 7) * 100) : 0;
 
   return (
@@ -33,7 +35,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
           <Stat label="Credentials" value={certificates?.length ?? 0} note="saved to your library" />
           <Stat label="Proof files" value={proofCount} note="private PDF/image proof" />
           <Stat label="Ready to reuse" value={certificates?.length ?? 0} note="available in resume builder" />
-          <Stat label="Expired" value={(certificates ?? []).filter((item: any) => item.expiry_date && new Date(item.expiry_date).getTime() < Date.now()).length} note="review before using" />
+          <Stat label="Expired" value={certificateItems.filter((item) => item.expiry_date && new Date(item.expiry_date).getTime() < Date.now()).length} note="review before using" />
         </section>
 
         <section className="jc-tool-grid">
@@ -54,7 +56,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
           <section>
             <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="jc-eyebrow">YOUR CREDENTIALS</p><h2 className="jc-section-title">Ready for relevant resume versions</h2></div><span className="text-xs font-bold text-[#789087]">{certificates?.length ?? 0} saved</span></div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {certificates?.length ? certificates.map((certificate: any) => (
+              {certificateItems.length ? certificateItems.map((certificate) => (
                 <article key={certificate.id} className="jc-card p-5">
                   <div className="flex items-start justify-between gap-4"><div><p className="jc-eyebrow !text-[10px]">{certificate.issuer}</p><h3 className="jc-section-title !mt-2 !text-[22px]">{certificate.name}</h3></div>{certificate.storage_path ? <span className="jc-ready-pill">Proof saved</span> : null}</div>
                   <div className="mt-5 grid gap-2 text-xs text-[#6f887f]">

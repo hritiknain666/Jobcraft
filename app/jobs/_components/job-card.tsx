@@ -1,8 +1,9 @@
 import { calculateJobsListMatch, type JobsListProfile } from "@/lib/jobs-list-match";
+import type { JobRecord } from "@/lib/types/jobcraft";
 import { JobCardMain } from "./job-card-main";
 import { JobMatchAside } from "./job-match-aside";
 
-export function JobCard({ job, profile }: { job: any; profile: JobsListProfile | null }) {
+export function JobCard({ job, profile }: { job: JobRecord; profile: JobsListProfile | null }) {
   const match = calculateJobsListMatch(job, profile);
 
   return (

@@ -4,6 +4,9 @@ import AiCareerChat from "@/components/ai-career-chat";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch } from "@/lib/job-match";
 import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
+import type { JobRecord } from "@/lib/types/jobcraft";
+
+type InterviewJob = Pick<JobRecord, "id" | "title" | "company" | "description" | "skills" | "location" | "work_mode">;
 
 export default async function CareerAssistantPage({ searchParams }: { searchParams: Promise<{ mode?: string; jobId?: string }> }) {
   const params = await searchParams;
@@ -20,10 +23,10 @@ export default async function CareerAssistantPage({ searchParams }: { searchPara
     supabase.from("certificates").select("id").eq("user_id", user.id),
   ]);
 
-  let selectedJob: any = null;
+  let selectedJob: InterviewJob | null = null;
   if (params.mode === "interview" && params.jobId) {
     const { data } = await supabase.from("jobs").select("id,title,company,description,skills,location,work_mode").eq("id", params.jobId).eq("is_active", true).maybeSingle();
-    selectedJob = data;
+    selectedJob = data as InterviewJob | null;
   }
 
   const matches = (jobs ?? []).map((job) => ({
@@ -110,7 +113,7 @@ export default async function CareerAssistantPage({ searchParams }: { searchPara
   );
 }
 
-function buildInterviewQuestions(job: any, userSkills: string[]) {
+function buildInterviewQuestions(job: InterviewJob, userSkills: string[]) {
   const jobSkills = (job.skills ?? []).filter(Boolean).slice(0, 4);
   const matched = jobSkills.filter((skill: string) => userSkills.some((own) => own.toLowerCase() === String(skill).toLowerCase()));
   const focus = matched[0] || jobSkills[0];

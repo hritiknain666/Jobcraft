@@ -3,6 +3,9 @@ import WorkspaceShell from "@/components/workspace-shell";
 import { createClient } from "@/lib/supabase/server";
 import { calculateJobMatch } from "@/lib/job-match";
 import { jobFreshnessCutoff } from "@/lib/job-sources/freshness";
+import type { ApplicationRecord, JobRecord } from "@/lib/types/jobcraft";
+
+type RankedJob = JobRecord & { match: ReturnType<typeof calculateJobMatch> };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -37,7 +40,7 @@ export default async function DashboardPage() {
   const displayName = profile?.full_name?.trim() || user.user_metadata?.full_name || "Your profile";
   const firstName = displayName.split(/\s+/)[0] || "there";
 
-  const rankedJobs = (jobs ?? []).map((job: any) => ({
+  const rankedJobs: RankedJob[] = ((jobs ?? []) as JobRecord[]).map((job) => ({
     ...job,
     match: calculateJobMatch({
       jobSkills: job.skills ?? [],
@@ -51,20 +54,21 @@ export default async function DashboardPage() {
       targetRoles,
       jobTitle: job.title,
     }),
-  })).sort((a: any, b: any) => {
+  })).sort((a, b) => {
     const evidenceGap = b.match.evidenceCoverage - a.match.evidenceCoverage;
     return Math.abs(evidenceGap) > .25 ? evidenceGap : b.match.score - a.match.score;
   });
 
   const recommendations = rankedJobs.slice(0, 4);
-  const strongMatchCount = rankedJobs.filter((job: any) => job.match.score >= 75 && job.match.evidenceCoverage >= .5).length;
-  const savedCount = applications?.filter((item: any) => item.status === "Saved").length ?? 0;
-  const motionCount = applications?.filter((item: any) => ["Applied", "Screening", "Interview"].includes(item.status)).length ?? 0;
-  const interviewCount = applications?.filter((item: any) => item.status === "Interview").length ?? 0;
+  const applicationItems = (applications ?? []) as unknown as ApplicationRecord[];
+  const strongMatchCount = rankedJobs.filter((job) => job.match.score >= 75 && job.match.evidenceCoverage >= .5).length;
+  const savedCount = applicationItems.filter((item) => item.status === "Saved").length;
+  const motionCount = applicationItems.filter((item) => ["Applied", "Screening", "Interview"].includes(item.status)).length;
+  const interviewCount = applicationItems.filter((item) => item.status === "Interview").length;
   const currentDate = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "2-digit", month: "short" }).format(new Date()).toUpperCase();
 
-  const upcoming = (applications ?? [])
-    .filter((item: any) => ["Applied", "Screening", "Interview"].includes(item.status))
+  const upcoming = applicationItems
+    .filter((item) => ["Applied", "Screening", "Interview"].includes(item.status))
     .slice(0, 2);
 
   return (
@@ -113,7 +117,7 @@ export default async function DashboardPage() {
               <Link href="/jobs" className="jc-text-link">View all</Link>
             </div>
             <div className="jc-role-list">
-              {recommendations.length ? recommendations.map((job: any) => (
+              {recommendations.length ? recommendations.map((job) => (
                 <Link key={job.id} href={`/jobs/${job.id}`} className="jc-role-row">
                   <span className="jc-company-dot">{companyInitials(job.company)}</span>
                   <span className="jc-role-copy">
@@ -138,7 +142,7 @@ export default async function DashboardPage() {
               <span className="text-xl text-[#9bb3aa]">◷</span>
             </div>
             <div className="jc-upcoming-list">
-              {upcoming.length ? upcoming.map((item: any) => {
+              {upcoming.length ? upcoming.map((item) => {
                 const href = item.status === "Interview" && item.jobs?.id ? `/career-assistant?mode=interview&jobId=${item.jobs.id}` : "/applications";
                 return (
                   <Link href={href} key={item.id} className="jc-upcoming-item text-inherit no-underline">
@@ -167,7 +171,7 @@ export default async function DashboardPage() {
             <Link href="/applications" className="jc-text-link">See applications ↗</Link>
           </div>
           <div className="jc-activity-grid">
-            {(applications ?? []).slice(0, 4).map((item: any) => (
+            {applicationItems.slice(0, 4).map((item) => (
               <div key={item.id} className="jc-activity-item">
                 <b>{activityTitle(item.status)}</b>
                 <span>{item.jobs?.company || "JobCraft"} · {item.jobs?.title || "Application"} · {new Date(item.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
