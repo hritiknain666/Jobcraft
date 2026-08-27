@@ -22,7 +22,9 @@ export type AdzunaSearchResponse = {
   }>;
 };
 
-export async function fetchAdzunaIndia(input: AdzunaSearchInput = {}): Promise<AdzunaSearchResponse> {
+export async function fetchAdzunaIndia(
+  input: AdzunaSearchInput = {},
+): Promise<AdzunaSearchResponse> {
   const { appId, appKey } = requireAdzunaConfig();
   const page = Math.min(Math.max(Math.trunc(input.page ?? 1), 1), 50);
   const resultsPerPage = Math.min(Math.max(Math.trunc(input.resultsPerPage ?? 20), 1), 50);

@@ -12,20 +12,24 @@ export function normalizeRemotiveIndia(payload: RemotiveResponse) {
 
     const description = toPlainText(job.description);
     const extracted = extractJobMetadata(job.title, description);
-    const skills = [job.category, ...extracted.skills].filter((value): value is string => Boolean(value?.trim()));
+    const skills = [job.category, ...extracted.skills].filter((value): value is string =>
+      Boolean(value?.trim()),
+    );
 
-    return [normalizeJob({
-      source: "Remotive",
-      externalId: String(job.id),
-      title: job.title,
-      company: job.company_name,
-      location: candidateLocation || "Remote · Worldwide",
-      workMode: "Remote",
-      skills: [...new Set(skills)].slice(0, 40),
-      description,
-      applyUrl: job.url ?? null,
-      postedAt: job.publication_date ?? null,
-      isSample: false,
-    })];
+    return [
+      normalizeJob({
+        source: "Remotive",
+        externalId: String(job.id),
+        title: job.title,
+        company: job.company_name,
+        location: candidateLocation || "Remote · Worldwide",
+        workMode: "Remote",
+        skills: [...new Set(skills)].slice(0, 40),
+        description,
+        applyUrl: job.url ?? null,
+        postedAt: job.publication_date ?? null,
+        isSample: false,
+      }),
+    ];
   });
 }

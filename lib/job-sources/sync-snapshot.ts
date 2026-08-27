@@ -7,13 +7,15 @@ export async function syncLiveJobSnapshot(
   supabase: SupabaseClient,
   source: string,
   jobs: NormalizedJob[],
-  options: { externalIdPrefix?: string } = {}
+  options: { externalIdPrefix?: string } = {},
 ) {
   const validated = validateLiveImportBatch(jobs);
   const rows = validated.map(toJobsTableRow);
 
   if (rows.length) {
-    const { error } = await supabase.from("jobs").upsert(rows, { onConflict: "source,external_id" });
+    const { error } = await supabase
+      .from("jobs")
+      .upsert(rows, { onConflict: "source,external_id" });
     if (error) throw error;
   }
 

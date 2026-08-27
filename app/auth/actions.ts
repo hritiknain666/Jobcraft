@@ -30,7 +30,14 @@ export async function login(formData: FormData) {
   const next = safeNextPath(formData.get("next"));
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) redirect(authUrl("/auth/login", { error: error.message, email, next: next === "/dashboard" ? undefined : next }));
+  if (error)
+    redirect(
+      authUrl("/auth/login", {
+        error: error.message,
+        email,
+        next: next === "/dashboard" ? undefined : next,
+      }),
+    );
 
   revalidatePath("/", "layout");
   redirect(next);
@@ -52,18 +59,27 @@ export async function signup(formData: FormData) {
     },
   });
 
-  if (error) redirect(authUrl("/auth/signup", { error: error.message, next: next === "/dashboard" ? undefined : next }));
+  if (error)
+    redirect(
+      authUrl("/auth/signup", {
+        error: error.message,
+        next: next === "/dashboard" ? undefined : next,
+      }),
+    );
 
   if (data.session) {
     revalidatePath("/", "layout");
     redirect(next);
   }
 
-  redirect(authUrl("/auth/login", {
-    message: "Account created. Check your inbox or spam folder to confirm your email. If it does not arrive, resend it below.",
-    email,
-    next: next === "/dashboard" ? undefined : next,
-  }));
+  redirect(
+    authUrl("/auth/login", {
+      message:
+        "Account created. Check your inbox or spam folder to confirm your email. If it does not arrive, resend it below.",
+      email,
+      next: next === "/dashboard" ? undefined : next,
+    }),
+  );
 }
 
 export async function resendConfirmation(formData: FormData) {
@@ -71,10 +87,13 @@ export async function resendConfirmation(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const next = safeNextPath(formData.get("next"));
 
-  if (!email) redirect(authUrl("/auth/login", {
-    error: "Enter the email you used to sign up, then resend the confirmation.",
-    next: next === "/dashboard" ? undefined : next,
-  }));
+  if (!email)
+    redirect(
+      authUrl("/auth/login", {
+        error: "Enter the email you used to sign up, then resend the confirmation.",
+        next: next === "/dashboard" ? undefined : next,
+      }),
+    );
 
   const { error } = await supabase.auth.resend({
     type: "signup",
@@ -82,12 +101,21 @@ export async function resendConfirmation(formData: FormData) {
     options: verificationOptions(next),
   });
 
-  if (error) redirect(authUrl("/auth/login", { error: error.message, email, next: next === "/dashboard" ? undefined : next }));
-  redirect(authUrl("/auth/login", {
-    message: "Confirmation email sent again. Check your inbox and spam folder.",
-    email,
-    next: next === "/dashboard" ? undefined : next,
-  }));
+  if (error)
+    redirect(
+      authUrl("/auth/login", {
+        error: error.message,
+        email,
+        next: next === "/dashboard" ? undefined : next,
+      }),
+    );
+  redirect(
+    authUrl("/auth/login", {
+      message: "Confirmation email sent again. Check your inbox and spam folder.",
+      email,
+      next: next === "/dashboard" ? undefined : next,
+    }),
+  );
 }
 
 export async function logout() {

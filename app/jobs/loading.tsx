@@ -13,7 +13,10 @@ export default function JobsLoading() {
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
           <div className="space-y-4">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-56 animate-pulse rounded-[26px] border border-slate-200 bg-white shadow-sm" />
+              <div
+                key={item}
+                className="h-56 animate-pulse rounded-[26px] border border-slate-200 bg-white shadow-sm"
+              />
             ))}
           </div>
           <div className="hidden h-64 animate-pulse rounded-[24px] border border-slate-200 bg-white lg:block" />

@@ -43,7 +43,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   if (!target) return redirectToTarget(request, id, null);
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) {
     const { data: existing } = await supabase
       .from("applications")

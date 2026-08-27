@@ -30,7 +30,8 @@ export async function GET() {
     const refreshStale = health.refresh_status === "stale";
     const aiUsersAtLimit = Number(health.ai_users_at_limit ?? 0);
     const aiSpike = aiUsersAtLimit >= AI_SPIKE_USER_THRESHOLD;
-    const status = unhealthySources.length || refreshStale || refreshFailed || aiSpike ? "degraded" : "ok";
+    const status =
+      unhealthySources.length || refreshStale || refreshFailed || aiSpike ? "degraded" : "ok";
 
     if (status !== "ok") {
       logMonitoringEvent("warn", "operational_health_degraded", {

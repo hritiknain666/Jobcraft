@@ -12,7 +12,11 @@ function workMode(value: string | null | undefined) {
   return null;
 }
 
-function annualInrToLpa(value: number | null | undefined, currency: string | null | undefined, interval: string | null | undefined) {
+function annualInrToLpa(
+  value: number | null | undefined,
+  currency: string | null | undefined,
+  interval: string | null | undefined,
+) {
   if (value === null || value === undefined || !Number.isFinite(value)) return null;
   const annual = /year|annual/i.test(interval ?? "");
   return currency?.toUpperCase() === "INR" && annual ? Number((value / 100_000).toFixed(2)) : null;
@@ -21,29 +25,35 @@ function annualInrToLpa(value: number | null | undefined, currency: string | nul
 export function normalizeLeverIndia(payload: LeverSitePayload) {
   return payload.jobs.flatMap((job) => {
     if (!job.id || !job.text) return [];
-    const locations = job.categories?.allLocations?.length ? job.categories.allLocations : [job.categories?.location ?? ""];
+    const locations = job.categories?.allLocations?.length
+      ? job.categories.allLocations
+      : [job.categories?.location ?? ""];
     const isIndia = job.country?.toUpperCase() === "IN" || locations.some(isIndiaLocation);
     if (!isIndia) return [];
 
     const location = locations.filter(Boolean).join(" · ") || "India";
-    const description = toPlainText([job.openingPlain, job.descriptionPlain, job.additionalPlain].filter(Boolean).join("\n\n"));
+    const description = toPlainText(
+      [job.openingPlain, job.descriptionPlain, job.additionalPlain].filter(Boolean).join("\n\n"),
+    );
     const extracted = extractJobMetadata(job.text, `${location}\n${description}`);
     const range = job.salaryRange;
 
-    return [normalizeJob({
-      source: "Lever",
-      externalId: `${payload.site}:${job.id}`,
-      title: job.text,
-      company: payload.company,
-      location,
-      workMode: workMode(job.workplaceType) ?? extracted.workMode,
-      salaryMinLpa: annualInrToLpa(range?.min, range?.currency, range?.interval),
-      salaryMaxLpa: annualInrToLpa(range?.max, range?.currency, range?.interval),
-      skills: extracted.skills,
-      description,
-      applyUrl: job.applyUrl ?? job.hostedUrl ?? null,
-      postedAt: null,
-      isSample: false,
-    })];
+    return [
+      normalizeJob({
+        source: "Lever",
+        externalId: `${payload.site}:${job.id}`,
+        title: job.text,
+        company: payload.company,
+        location,
+        workMode: workMode(job.workplaceType) ?? extracted.workMode,
+        salaryMinLpa: annualInrToLpa(range?.min, range?.currency, range?.interval),
+        salaryMaxLpa: annualInrToLpa(range?.max, range?.currency, range?.interval),
+        skills: extracted.skills,
+        description,
+        applyUrl: job.applyUrl ?? job.hostedUrl ?? null,
+        postedAt: null,
+        isSample: false,
+      }),
+    ];
   });
 }

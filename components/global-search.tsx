@@ -1,7 +1,12 @@
 export default function GlobalSearch() {
   return (
     <form action="/search" method="get" className="relative w-full max-w-[620px]" role="search">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#789087]" aria-hidden="true">⌕</span>
+      <span
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#789087]"
+        aria-hidden="true"
+      >
+        ⌕
+      </span>
       <input
         type="search"
         name="q"

@@ -16,9 +16,12 @@ type RateLimitResult = {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (!isAiConfigured()) return NextResponse.json({ error: "AI is not configured yet." }, { status: 503 });
+  if (!isAiConfigured())
+    return NextResponse.json({ error: "AI is not configured yet." }, { status: 503 });
 
   let body: { prompt?: unknown; jobId?: unknown };
   try {
@@ -30,7 +33,8 @@ export async function POST(request: Request) {
   const prompt = String(body.prompt ?? "").trim();
   const jobId = String(body.jobId ?? "").trim();
   if (!prompt) return NextResponse.json({ error: "Ask a career question first." }, { status: 400 });
-  if (prompt.length > MAX_PROMPT_LENGTH) return NextResponse.json({ error: "Question is too long." }, { status: 400 });
+  if (prompt.length > MAX_PROMPT_LENGTH)
+    return NextResponse.json({ error: "Question is too long." }, { status: 400 });
 
   const admin = createAdminClient();
   const { data: rateRows, error: rateError } = await admin.rpc("consume_ai_rate_limit", {
@@ -40,7 +44,10 @@ export async function POST(request: Request) {
   });
   if (rateError) {
     logMonitoringEvent("error", "ai_rate_limit_check_failed", { error: rateError.message });
-    return NextResponse.json({ error: "The AI assistant is temporarily unavailable." }, { status: 503 });
+    return NextResponse.json(
+      { error: "The AI assistant is temporarily unavailable." },
+      { status: 503 },
+    );
   }
 
   const rate = (Array.isArray(rateRows) ? rateRows[0] : rateRows) as RateLimitResult | null;
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
     logMonitoringEvent("warn", "ai_rate_limit_blocked", { retryAfterSeconds: retryAfter });
     return NextResponse.json(
       { error: "Too many AI requests. Please try again shortly." },
-      { status: 429, headers: { "Retry-After": String(retryAfter), "X-RateLimit-Remaining": "0" } }
+      { status: 429, headers: { "Retry-After": String(retryAfter), "X-RateLimit-Remaining": "0" } },
     );
   }
 
@@ -59,14 +66,13 @@ export async function POST(request: Request) {
       .select("headline,city,experience_years,skills,target_roles,preferred_work_modes")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
-      .from("applications")
-      .select("status")
-      .eq("user_id", user.id),
+    supabase.from("applications").select("status").eq("user_id", user.id),
     jobId
       ? supabase
           .from("jobs")
-          .select("title,company,location_normalized,location,work_mode,experience_min,experience_max,skills,description")
+          .select(
+            "title,company,location_normalized,location,work_mode,experience_min,experience_max,skills,description",
+          )
           .eq("id", jobId)
           .eq("is_active", true)
           .is("duplicate_of", null)
@@ -74,11 +80,14 @@ export async function POST(request: Request) {
       : Promise.resolve({ data: null }),
   ]);
 
-  const applicationSummary = (applications ?? []).reduce<Record<string, number>>((summary, item) => {
-    const status = String(item.status || "Unknown");
-    summary[status] = (summary[status] ?? 0) + 1;
-    return summary;
-  }, {});
+  const applicationSummary = (applications ?? []).reduce<Record<string, number>>(
+    (summary, item) => {
+      const status = String(item.status || "Unknown");
+      summary[status] = (summary[status] ?? 0) + 1;
+      return summary;
+    },
+    {},
+  );
 
   const context = {
     profile: {
@@ -120,12 +129,15 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(
       { answer: result.text, model: result.model },
-      { headers: { "X-RateLimit-Remaining": String(rate.remaining) } }
+      { headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
     );
   } catch (error) {
     logMonitoringEvent("error", "ai_request_failed", {
       error: error instanceof Error ? error.message : "Unknown AI request error",
     });
-    return NextResponse.json({ error: "The AI assistant could not answer right now." }, { status: 502 });
+    return NextResponse.json(
+      { error: "The AI assistant could not answer right now." },
+      { status: 502 },
+    );
   }
 }

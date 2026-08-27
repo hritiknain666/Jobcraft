@@ -18,8 +18,12 @@ export async function requestPasswordReset(formData: FormData) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
   if (error) {
-    redirect(`/auth/forgot-password?error=${encodeURIComponent(error.message)}&email=${encodeURIComponent(email)}`);
+    redirect(
+      `/auth/forgot-password?error=${encodeURIComponent(error.message)}&email=${encodeURIComponent(email)}`,
+    );
   }
 
-  redirect(`/auth/forgot-password?message=${encodeURIComponent("If an account exists for that email, a password reset link has been sent. Check your inbox and spam folder.")}&email=${encodeURIComponent(email)}`);
+  redirect(
+    `/auth/forgot-password?message=${encodeURIComponent("If an account exists for that email, a password reset link has been sent. Check your inbox and spam folder.")}&email=${encodeURIComponent(email)}`,
+  );
 }

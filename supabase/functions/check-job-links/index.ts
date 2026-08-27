@@ -2,7 +2,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 async function sha256(value: string) {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
   return [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -52,11 +54,18 @@ Deno.serve(async (req) => {
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   let adminKey = legacy;
   if (secretMap) {
-    try { adminKey = JSON.parse(secretMap)?.default ?? legacy; } catch { adminKey = legacy; }
+    try {
+      adminKey = JSON.parse(secretMap)?.default ?? legacy;
+    } catch {
+      adminKey = legacy;
+    }
   }
-  if (!url || !adminKey) return Response.json({ error: "Server configuration unavailable" }, { status: 500 });
+  if (!url || !adminKey)
+    return Response.json({ error: "Server configuration unavailable" }, { status: 500 });
 
-  const supabase = createClient(url, adminKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const supabase = createClient(url, adminKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const supplied = req.headers.get("x-jobcraft-cron-secret") ?? "";
   const { data: authRow, error: authError } = await supabase
     .from("job_refresh_auth")
@@ -64,7 +73,12 @@ Deno.serve(async (req) => {
     .eq("id", true)
     .single();
 
-  if (authError || !authRow || !supplied || !constantEqual(await sha256(supplied), String(authRow.secret_sha256))) {
+  if (
+    authError ||
+    !authRow ||
+    !supplied ||
+    !constantEqual(await sha256(supplied), String(authRow.secret_sha256))
+  ) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -73,7 +87,8 @@ Deno.serve(async (req) => {
     .insert({ status: "running" })
     .select("id")
     .single();
-  if (runError || !run?.id) return Response.json({ error: "Could not create audit record" }, { status: 500 });
+  if (runError || !run?.id)
+    return Response.json({ error: "Could not create audit record" }, { status: 500 });
 
   try {
     const recheckBefore = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -89,10 +104,12 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     const checkedAt = new Date().toISOString();
-    const results = await Promise.all((jobs ?? []).map(async (job) => ({
-      id: job.id,
-      status: await checkUrl(String(job.apply_url)),
-    })));
+    const results = await Promise.all(
+      (jobs ?? []).map(async (job) => ({
+        id: job.id,
+        status: await checkUrl(String(job.apply_url)),
+      })),
+    );
 
     let ok = 0;
     let dead = 0;

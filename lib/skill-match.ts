@@ -35,11 +35,11 @@ export function skillsMatch(a: string, b: string) {
 
 export function compareSkills(jobSkills: string[], userSkills: string[]) {
   const matched = jobSkills.filter((jobSkill) =>
-    userSkills.some((userSkill) => skillsMatch(jobSkill, userSkill))
+    userSkills.some((userSkill) => skillsMatch(jobSkill, userSkill)),
   );
 
-  const missing = jobSkills.filter((jobSkill) =>
-    !userSkills.some((userSkill) => skillsMatch(jobSkill, userSkill))
+  const missing = jobSkills.filter(
+    (jobSkill) => !userSkills.some((userSkill) => skillsMatch(jobSkill, userSkill)),
   );
 
   return { matched, missing };

@@ -13,18 +13,20 @@ export function normalizeGreenhouseIndia(payload: GreenhouseBoardPayload) {
     const description = toPlainText(job.content);
     const extracted = extractJobMetadata(job.title, `${location}\n${description}`);
 
-    return [normalizeJob({
-      source: "Greenhouse",
-      externalId: `${payload.boardToken}:${job.id}`,
-      title: job.title,
-      company: payload.boardName,
-      location: location || "India",
-      workMode: extracted.workMode,
-      skills: extracted.skills,
-      description,
-      applyUrl: job.absolute_url ?? null,
-      postedAt: job.updated_at ?? null,
-      isSample: false,
-    })];
+    return [
+      normalizeJob({
+        source: "Greenhouse",
+        externalId: `${payload.boardToken}:${job.id}`,
+        title: job.title,
+        company: payload.boardName,
+        location: location || "India",
+        workMode: extracted.workMode,
+        skills: extracted.skills,
+        description,
+        applyUrl: job.absolute_url ?? null,
+        postedAt: job.updated_at ?? null,
+        isSample: false,
+      }),
+    ];
   });
 }

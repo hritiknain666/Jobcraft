@@ -54,8 +54,7 @@ const allowedRuleNames: Record<UploadKind, readonly string[]> = {
 };
 
 export type UploadValidation =
-  | { valid: true; extension: string; contentType: string }
-  | { valid: false; error: string };
+  { valid: true; extension: string; contentType: string } | { valid: false; error: string };
 
 export async function validateUpload(file: File, kind: UploadKind): Promise<UploadValidation> {
   if (file.size === 0) return { valid: false, error: "The selected file is empty." };
@@ -69,7 +68,10 @@ export async function validateUpload(file: File, kind: UploadKind): Promise<Uplo
   if (!rule) {
     return {
       valid: false,
-      error: kind === "resume" ? "Only PDF and DOCX files are supported." : "Only PDF, JPG, JPEG and PNG files are supported.",
+      error:
+        kind === "resume"
+          ? "Only PDF and DOCX files are supported."
+          : "Only PDF, JPG, JPEG and PNG files are supported.",
     };
   }
   if (!rule.mimeTypes.includes(file.type.toLowerCase())) {

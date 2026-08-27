@@ -37,6 +37,12 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
+      - name: Check code formatting
+        run: npm run format:check
+
+      - name: Lint source code
+        run: npm run lint
+
       - name: Core regression tests
         run: npm test
 

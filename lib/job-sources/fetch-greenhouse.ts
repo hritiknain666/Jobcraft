@@ -29,11 +29,13 @@ export async function fetchGreenhouseBoard(boardToken: string): Promise<Greenhou
     }),
   ]);
 
-  if (!boardResponse.ok) throw new Error(`Greenhouse board request failed with status ${boardResponse.status}.`);
-  if (!jobsResponse.ok) throw new Error(`Greenhouse jobs request failed with status ${jobsResponse.status}.`);
+  if (!boardResponse.ok)
+    throw new Error(`Greenhouse board request failed with status ${boardResponse.status}.`);
+  if (!jobsResponse.ok)
+    throw new Error(`Greenhouse jobs request failed with status ${jobsResponse.status}.`);
 
-  const board = await boardResponse.json() as { name?: string };
-  const payload = await jobsResponse.json() as { jobs?: GreenhouseJob[] };
+  const board = (await boardResponse.json()) as { name?: string };
+  const payload = (await jobsResponse.json()) as { jobs?: GreenhouseJob[] };
   return {
     boardToken: token,
     boardName: board.name?.trim() || token,

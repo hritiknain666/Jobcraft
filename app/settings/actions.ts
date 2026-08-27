@@ -6,8 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 
 type StorageObject = { bucket: "resumes" | "certificates"; path: string };
 
-async function collectStoredFiles(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<StorageObject[]> {
-  const [{ data: resumes, error: resumeQueryError }, { data: certificates, error: certificateQueryError }] = await Promise.all([
+async function collectStoredFiles(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<StorageObject[]> {
+  const [
+    { data: resumes, error: resumeQueryError },
+    { data: certificates, error: certificateQueryError },
+  ] = await Promise.all([
     admin.from("resumes").select("storage_path").eq("user_id", userId),
     admin.from("certificates").select("storage_path").eq("user_id", userId),
   ]);
@@ -16,12 +22,19 @@ async function collectStoredFiles(admin: ReturnType<typeof createAdminClient>, u
   if (certificateQueryError) throw certificateQueryError;
 
   return [
-    ...(resumes ?? []).flatMap((item) => item.storage_path ? [{ bucket: "resumes" as const, path: item.storage_path }] : []),
-    ...(certificates ?? []).flatMap((item) => item.storage_path ? [{ bucket: "certificates" as const, path: item.storage_path }] : []),
+    ...(resumes ?? []).flatMap((item) =>
+      item.storage_path ? [{ bucket: "resumes" as const, path: item.storage_path }] : [],
+    ),
+    ...(certificates ?? []).flatMap((item) =>
+      item.storage_path ? [{ bucket: "certificates" as const, path: item.storage_path }] : [],
+    ),
   ];
 }
 
-async function removeStoredFiles(admin: ReturnType<typeof createAdminClient>, objects: StorageObject[]) {
+async function removeStoredFiles(
+  admin: ReturnType<typeof createAdminClient>,
+  objects: StorageObject[],
+) {
   for (const bucket of ["resumes", "certificates"] as const) {
     const paths = objects.filter((item) => item.bucket === bucket).map((item) => item.path);
     if (paths.length === 0) continue;
@@ -37,7 +50,9 @@ export async function deleteAccount(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/dashboard?auth=login");
 
   const admin = createAdminClient();
@@ -79,7 +94,7 @@ export async function deleteAccount(formData: FormData) {
             Boolean(item) &&
             typeof item === "object" &&
             (item.bucket === "resumes" || item.bucket === "certificates") &&
-            typeof item.path === "string"
+            typeof item.path === "string",
         )
       : [];
     await removeStoredFiles(admin, objects);
@@ -87,12 +102,15 @@ export async function deleteAccount(formData: FormData) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown storage cleanup error";
     console.error("Account deleted; storage cleanup queued for retry", error);
-    await admin.from("account_deletion_cleanup").update({
-      status: "failed",
-      attempts: (cleanup?.attempts ?? 0) + 1,
-      last_error: message.slice(0, 1_000),
-      updated_at: new Date().toISOString(),
-    }).eq("user_id", user.id);
+    await admin
+      .from("account_deletion_cleanup")
+      .update({
+        status: "failed",
+        attempts: (cleanup?.attempts ?? 0) + 1,
+        last_error: message.slice(0, 1_000),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
   }
 
   redirect("/?accountDeleted=1");

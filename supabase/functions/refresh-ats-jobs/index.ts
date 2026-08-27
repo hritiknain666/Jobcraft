@@ -65,16 +65,38 @@ const LEVER = [
 ] as const;
 
 const SKILLS: Array<[string, RegExp]> = [
-  ["SQL", /\bsql\b/i], ["Power BI", /\bpower\s*bi\b/i], ["Excel", /\b(?:microsoft\s+|ms\s+)?excel\b/i],
-  ["Python", /\bpython\b/i], ["Java", /\bjava\b(?!script)/i], ["JavaScript", /\bjavascript\b|\bjs\b/i],
-  ["TypeScript", /\btypescript\b/i], ["React", /\breact(?:\.js|js)?\b/i], ["Node.js", /\bnode(?:\.js|js)\b/i],
-  ["AWS", /\baws\b|\bamazon web services\b/i], ["Azure", /\bazure\b/i], ["GCP", /\bgcp\b|\bgoogle cloud(?: platform)?\b/i],
-  ["Tableau", /\btableau\b/i], ["Salesforce", /\bsalesforce\b/i], ["SAP", /\bsap\b/i], ["C++", /\bc\+\+\b/i],
-  ["C#", /\bc#\b/i], [".NET", /(?:^|\s)\.net\b/i], ["HTML", /\bhtml5?\b/i], ["CSS", /\bcss3?\b/i],
-  ["Git", /\bgit\b/i], ["Docker", /\bdocker\b/i], ["Kubernetes", /\bkubernetes\b|\bk8s\b/i],
-  ["PostgreSQL", /\bpostgres(?:ql)?\b/i], ["MySQL", /\bmysql\b/i], ["MongoDB", /\bmongodb\b/i],
-  ["Snowflake", /\bsnowflake\b/i], ["Databricks", /\bdatabricks\b/i], ["Airflow", /\bairflow\b/i],
-  ["Spark", /\bapache\s+spark\b|\bspark\b/i], ["Looker", /\blooker\b/i], ["Figma", /\bfigma\b/i],
+  ["SQL", /\bsql\b/i],
+  ["Power BI", /\bpower\s*bi\b/i],
+  ["Excel", /\b(?:microsoft\s+|ms\s+)?excel\b/i],
+  ["Python", /\bpython\b/i],
+  ["Java", /\bjava\b(?!script)/i],
+  ["JavaScript", /\bjavascript\b|\bjs\b/i],
+  ["TypeScript", /\btypescript\b/i],
+  ["React", /\breact(?:\.js|js)?\b/i],
+  ["Node.js", /\bnode(?:\.js|js)\b/i],
+  ["AWS", /\baws\b|\bamazon web services\b/i],
+  ["Azure", /\bazure\b/i],
+  ["GCP", /\bgcp\b|\bgoogle cloud(?: platform)?\b/i],
+  ["Tableau", /\btableau\b/i],
+  ["Salesforce", /\bsalesforce\b/i],
+  ["SAP", /\bsap\b/i],
+  ["C++", /\bc\+\+\b/i],
+  ["C#", /\bc#\b/i],
+  [".NET", /(?:^|\s)\.net\b/i],
+  ["HTML", /\bhtml5?\b/i],
+  ["CSS", /\bcss3?\b/i],
+  ["Git", /\bgit\b/i],
+  ["Docker", /\bdocker\b/i],
+  ["Kubernetes", /\bkubernetes\b|\bk8s\b/i],
+  ["PostgreSQL", /\bpostgres(?:ql)?\b/i],
+  ["MySQL", /\bmysql\b/i],
+  ["MongoDB", /\bmongodb\b/i],
+  ["Snowflake", /\bsnowflake\b/i],
+  ["Databricks", /\bdatabricks\b/i],
+  ["Airflow", /\bairflow\b/i],
+  ["Spark", /\bapache\s+spark\b|\bspark\b/i],
+  ["Looker", /\blooker\b/i],
+  ["Figma", /\bfigma\b/i],
 ];
 
 function plain(value: unknown, max = 20_000) {
@@ -82,9 +104,15 @@ function plain(value: unknown, max = 20_000) {
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ").trim().slice(0, max);
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 }
 
 function skillsFor(title: string, description: string, extras: unknown[] = []) {
@@ -94,7 +122,9 @@ function skillsFor(title: string, description: string, extras: unknown[] = []) {
 
 function isIndiaLocation(value: unknown) {
   const v = plain(value, 500).toLowerCase();
-  return /\bindia\b|\bbengaluru\b|\bbangalore\b|\bmumbai\b|\bdelhi\b|\bnew delhi\b|\bhyderabad\b|\bpune\b|\bchennai\b|\bgurugram\b|\bgurgaon\b|\bnoida\b|\bkolkata\b|\bahmedabad\b|\bkochi\b|\bcochin\b|\bjaipur\b|\bchandigarh\b|\bcoimbatore\b|\bindore\b|\bsurat\b|\bvadodara\b|\bnashik\b|\bmysuru\b|\bmysore\b/.test(v);
+  return /\bindia\b|\bbengaluru\b|\bbangalore\b|\bmumbai\b|\bdelhi\b|\bnew delhi\b|\bhyderabad\b|\bpune\b|\bchennai\b|\bgurugram\b|\bgurgaon\b|\bnoida\b|\bkolkata\b|\bahmedabad\b|\bkochi\b|\bcochin\b|\bjaipur\b|\bchandigarh\b|\bcoimbatore\b|\bindore\b|\bsurat\b|\bvadodara\b|\bnashik\b|\bmysuru\b|\bmysore\b/.test(
+    v,
+  );
 }
 
 function safeUrl(value: unknown) {
@@ -125,17 +155,25 @@ function iso(value: unknown) {
     if (Number.isFinite(n)) return iso(n);
   }
   const date = new Date(String(value ?? ""));
-  return Number.isFinite(date.getTime()) && date.getUTCFullYear() >= 2000 ? date.toISOString() : new Date().toISOString();
+  return Number.isFinite(date.getTime()) && date.getUTCFullYear() >= 2000
+    ? date.toISOString()
+    : new Date().toISOString();
 }
 
 function inferMode(title: string, description: string, explicit?: unknown): JobRow["work_mode"] {
-  const direct = String(explicit ?? "").trim().toLowerCase();
+  const direct = String(explicit ?? "")
+    .trim()
+    .toLowerCase();
   if (direct === "remote") return "Remote";
   if (direct === "hybrid") return "Hybrid";
   if (direct === "on-site" || direct === "onsite") return "On-site";
   const value = `${title} ${description}`;
   if (/\bhybrid\b/i.test(value)) return "Hybrid";
-  if (/\bremote\b|\bwork\s+from\s+home\b|\bwfh\b/i.test(value) && !/\b(?:not|no)\s+remote\b/i.test(value)) return "Remote";
+  if (
+    /\bremote\b|\bwork\s+from\s+home\b|\bwfh\b/i.test(value) &&
+    !/\b(?:not|no)\s+remote\b/i.test(value)
+  )
+    return "Remote";
   if (/\bon[- ]?site\b|\bwork\s+from\s+office\b|\boffice[- ]based\b/i.test(value)) return "On-site";
   return null;
 }
@@ -149,14 +187,24 @@ function experience(value: string): [number | null, number | null] {
 
 function annualInrToLpa(value: unknown, currency: unknown, interval: unknown) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0 || String(currency ?? "").toUpperCase() !== "INR" || !/year|annual/i.test(String(interval ?? ""))) return null;
+  if (
+    !Number.isFinite(n) ||
+    n <= 0 ||
+    String(currency ?? "").toUpperCase() !== "INR" ||
+    !/year|annual/i.test(String(interval ?? ""))
+  )
+    return null;
   return Math.round((n / 100_000) * 100) / 100;
 }
 
 async function fetchJson(url: string, init: RequestInit = {}) {
   const response = await fetch(url, {
     ...init,
-    headers: { Accept: "application/json", "User-Agent": "JobCraft/1.0 job discovery for candidates", ...(init.headers ?? {}) },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "JobCraft/1.0 job discovery for candidates",
+      ...(init.headers ?? {}),
+    },
     signal: AbortSignal.timeout(25_000),
   });
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
@@ -178,20 +226,51 @@ async function greenHouseFeed(token: string, companyFallback: string): Promise<F
       const title = plain(raw?.title, 350);
       const location = plain(raw?.location?.name, 400);
       const description = plain(raw?.content);
-      if (id === null || id === undefined || !title || !isIndiaLocation(location) || description.length < 40) continue;
+      if (
+        id === null ||
+        id === undefined ||
+        !title ||
+        !isIndiaLocation(location) ||
+        description.length < 40
+      )
+        continue;
       const applyUrl = safeUrl(raw?.absolute_url);
       if (!applyUrl) continue;
       const [experienceMin, experienceMax] = experience(description);
       jobs.push({
-        source: "Greenhouse", external_id: `${token}:${id}`, title, company, location: location || "India",
-        work_mode: inferMode(title, description), experience_min: experienceMin, experience_max: experienceMax,
-        salary_min_lpa: null, salary_max_lpa: null, skills: skillsFor(title, description), description,
-        apply_url: applyUrl, is_active: true, posted_at: iso(raw?.updated_at),
+        source: "Greenhouse",
+        external_id: `${token}:${id}`,
+        title,
+        company,
+        location: location || "India",
+        work_mode: inferMode(title, description),
+        experience_min: experienceMin,
+        experience_max: experienceMax,
+        salary_min_lpa: null,
+        salary_max_lpa: null,
+        skills: skillsFor(title, description),
+        description,
+        apply_url: applyUrl,
+        is_active: true,
+        posted_at: iso(raw?.updated_at),
       });
     }
-    return { key, source: "Greenhouse", displayName: `${company} via Greenhouse`, externalIdPrefix: `${token}:`, jobs };
+    return {
+      key,
+      source: "Greenhouse",
+      displayName: `${company} via Greenhouse`,
+      externalIdPrefix: `${token}:`,
+      jobs,
+    };
   } catch (error) {
-    return { key, source: "Greenhouse", displayName: `${companyFallback} via Greenhouse`, externalIdPrefix: `${token}:`, jobs: [], error: error instanceof Error ? error.message : "Unknown Greenhouse error" };
+    return {
+      key,
+      source: "Greenhouse",
+      displayName: `${companyFallback} via Greenhouse`,
+      externalIdPrefix: `${token}:`,
+      jobs: [],
+      error: error instanceof Error ? error.message : "Unknown Greenhouse error",
+    };
   }
 }
 
@@ -215,29 +294,71 @@ async function leverFeed(site: string, company: string): Promise<FeedResult> {
     for (const raw of rows) {
       const id = raw?.id;
       const title = plain(raw?.text, 350);
-      const allLocations = Array.isArray(raw?.categories?.allLocations) ? raw.categories.allLocations.map((v: unknown) => plain(v, 250)).filter(Boolean) : [];
+      const allLocations = Array.isArray(raw?.categories?.allLocations)
+        ? raw.categories.allLocations.map((v: unknown) => plain(v, 250)).filter(Boolean)
+        : [];
       const primary = plain(raw?.categories?.location, 300);
-      const locations = allLocations.length ? allLocations : (primary ? [primary] : []);
+      const locations = allLocations.length ? allLocations : primary ? [primary] : [];
       const locationText = locations.join(" · ");
-      const india = String(raw?.country ?? "").toUpperCase() === "IN" || locations.some((v: string) => isIndiaLocation(v));
-      const description = plain([raw?.openingPlain, raw?.descriptionPlain, raw?.additionalPlain].filter(Boolean).join("\n\n"));
+      const india =
+        String(raw?.country ?? "").toUpperCase() === "IN" ||
+        locations.some((v: string) => isIndiaLocation(v));
+      const description = plain(
+        [raw?.openingPlain, raw?.descriptionPlain, raw?.additionalPlain]
+          .filter(Boolean)
+          .join("\n\n"),
+      );
       if (!id || !title || !india || description.length < 40) continue;
       const applyUrl = safeUrl(raw?.applyUrl ?? raw?.hostedUrl);
       if (!applyUrl) continue;
       const [experienceMin, experienceMax] = experience(description);
-      const extras = [raw?.categories?.team, raw?.categories?.department, raw?.categories?.commitment];
+      const extras = [
+        raw?.categories?.team,
+        raw?.categories?.department,
+        raw?.categories?.commitment,
+      ];
       jobs.push({
-        source: "Lever", external_id: `${site}:${id}`, title, company, location: locationText || "India",
-        work_mode: inferMode(title, description, raw?.workplaceType), experience_min: experienceMin, experience_max: experienceMax,
-        salary_min_lpa: annualInrToLpa(raw?.salaryRange?.min, raw?.salaryRange?.currency, raw?.salaryRange?.interval),
-        salary_max_lpa: annualInrToLpa(raw?.salaryRange?.max, raw?.salaryRange?.currency, raw?.salaryRange?.interval),
-        skills: skillsFor(title, description, extras), description, apply_url: applyUrl, is_active: true,
+        source: "Lever",
+        external_id: `${site}:${id}`,
+        title,
+        company,
+        location: locationText || "India",
+        work_mode: inferMode(title, description, raw?.workplaceType),
+        experience_min: experienceMin,
+        experience_max: experienceMax,
+        salary_min_lpa: annualInrToLpa(
+          raw?.salaryRange?.min,
+          raw?.salaryRange?.currency,
+          raw?.salaryRange?.interval,
+        ),
+        salary_max_lpa: annualInrToLpa(
+          raw?.salaryRange?.max,
+          raw?.salaryRange?.currency,
+          raw?.salaryRange?.interval,
+        ),
+        skills: skillsFor(title, description, extras),
+        description,
+        apply_url: applyUrl,
+        is_active: true,
         posted_at: iso(raw?.createdAt ?? raw?.updatedAt),
       });
     }
-    return { key, source: "Lever", displayName: `${company} via Lever`, externalIdPrefix: `${site}:`, jobs };
+    return {
+      key,
+      source: "Lever",
+      displayName: `${company} via Lever`,
+      externalIdPrefix: `${site}:`,
+      jobs,
+    };
   } catch (error) {
-    return { key, source: "Lever", displayName: `${company} via Lever`, externalIdPrefix: `${site}:`, jobs: [], error: error instanceof Error ? error.message : "Unknown Lever error" };
+    return {
+      key,
+      source: "Lever",
+      displayName: `${company} via Lever`,
+      externalIdPrefix: `${site}:`,
+      jobs: [],
+      error: error instanceof Error ? error.message : "Unknown Lever error",
+    };
   }
 }
 
@@ -245,10 +366,18 @@ async function adzunaFeed(): Promise<FeedResult> {
   const appId = Deno.env.get("ADZUNA_APP_ID")?.trim();
   const appKey = Deno.env.get("ADZUNA_APP_KEY")?.trim();
   const publishingReady = Deno.env.get("ADZUNA_PUBLISHING_READY")?.trim().toLowerCase() === "true";
-  const attributionReady = Deno.env.get("ADZUNA_ATTRIBUTION_READY")?.trim().toLowerCase() === "true";
+  const attributionReady =
+    Deno.env.get("ADZUNA_ATTRIBUTION_READY")?.trim().toLowerCase() === "true";
   const configured = Boolean(appId && appKey);
   if (!configured || !publishingReady || !attributionReady) {
-    return { key: "Adzuna", source: "Adzuna", displayName: "Adzuna", jobs: [], disabled: true, configured };
+    return {
+      key: "Adzuna",
+      source: "Adzuna",
+      displayName: "Adzuna",
+      jobs: [],
+      disabled: true,
+      configured,
+    };
   }
   try {
     const url = new URL("https://api.adzuna.com/v1/api/jobs/in/search/1");
@@ -264,41 +393,70 @@ async function adzunaFeed(): Promise<FeedResult> {
       const company = plain(raw?.company?.display_name, 300);
       const description = plain(raw?.description);
       const location = plain(raw?.location?.display_name, 400) || "India";
-      if (id === null || id === undefined || !title || !company || description.length < 40) continue;
+      if (id === null || id === undefined || !title || !company || description.length < 40)
+        continue;
       const applyUrl = safeUrl(raw?.redirect_url);
       if (!applyUrl) continue;
       const [experienceMin, experienceMax] = experience(description);
       jobs.push({
-        source: "Adzuna", external_id: String(id), title, company, location,
-        work_mode: inferMode(title, description), experience_min: experienceMin, experience_max: experienceMax,
-        salary_min_lpa: null, salary_max_lpa: null, skills: skillsFor(title, description), description,
-        apply_url: applyUrl, is_active: true, posted_at: iso(raw?.created),
+        source: "Adzuna",
+        external_id: String(id),
+        title,
+        company,
+        location,
+        work_mode: inferMode(title, description),
+        experience_min: experienceMin,
+        experience_max: experienceMax,
+        salary_min_lpa: null,
+        salary_max_lpa: null,
+        skills: skillsFor(title, description),
+        description,
+        apply_url: applyUrl,
+        is_active: true,
+        posted_at: iso(raw?.created),
       });
     }
     return { key: "Adzuna", source: "Adzuna", displayName: "Adzuna", jobs, configured: true };
   } catch (error) {
-    return { key: "Adzuna", source: "Adzuna", displayName: "Adzuna", jobs: [], configured: true, error: error instanceof Error ? error.message : "Unknown Adzuna error" };
+    return {
+      key: "Adzuna",
+      source: "Adzuna",
+      displayName: "Adzuna",
+      jobs: [],
+      configured: true,
+      error: error instanceof Error ? error.message : "Unknown Adzuna error",
+    };
   }
 }
 
 async function snapshotUpsert(supabase: SupabaseClient, feed: FeedResult) {
   let upserted = 0;
   if (feed.jobs.length) {
-    const { data, error } = await supabase.from("jobs").upsert(feed.jobs, { onConflict: "source,external_id" }).select("id");
+    const { data, error } = await supabase
+      .from("jobs")
+      .upsert(feed.jobs, { onConflict: "source,external_id" })
+      .select("id");
     if (error) throw error;
     upserted = data?.length ?? 0;
   }
 
   if (feed.externalIdPrefix) {
-    const { data: existing, error } = await supabase.from("jobs")
+    const { data: existing, error } = await supabase
+      .from("jobs")
       .select("external_id")
       .eq("source", feed.source)
       .like("external_id", `${feed.externalIdPrefix}%`);
     if (error) throw error;
     const current = new Set(feed.jobs.map((job) => job.external_id));
-    const stale = (existing ?? []).map((row) => String(row.external_id ?? "")).filter((id) => id && !current.has(id));
+    const stale = (existing ?? [])
+      .map((row) => String(row.external_id ?? ""))
+      .filter((id) => id && !current.has(id));
     for (let i = 0; i < stale.length; i += 100) {
-      const { error: updateError } = await supabase.from("jobs").update({ is_active: false }).eq("source", feed.source).in("external_id", stale.slice(i, i + 100));
+      const { error: updateError } = await supabase
+        .from("jobs")
+        .update({ is_active: false })
+        .eq("source", feed.source)
+        .in("external_id", stale.slice(i, i + 100));
       if (updateError) throw updateError;
     }
   }
@@ -306,7 +464,9 @@ async function snapshotUpsert(supabase: SupabaseClient, feed: FeedResult) {
 }
 
 async function sha256(value: string) {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 function constantEqual(a: string, b: string) {
@@ -322,18 +482,41 @@ Deno.serve(async (req) => {
   const secretMap = Deno.env.get("SUPABASE_SECRET_KEYS");
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   let adminKey = legacy;
-  if (secretMap) { try { adminKey = JSON.parse(secretMap)?.default ?? legacy; } catch { adminKey = legacy; } }
-  if (!url || !adminKey) return Response.json({ error: "Server configuration unavailable" }, { status: 500 });
+  if (secretMap) {
+    try {
+      adminKey = JSON.parse(secretMap)?.default ?? legacy;
+    } catch {
+      adminKey = legacy;
+    }
+  }
+  if (!url || !adminKey)
+    return Response.json({ error: "Server configuration unavailable" }, { status: 500 });
 
-  const supabase = createClient(url, adminKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const supabase = createClient(url, adminKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const supplied = req.headers.get("x-jobcraft-cron-secret") ?? "";
-  const { data: authRow, error: authError } = await supabase.from("job_refresh_auth").select("secret_sha256").eq("id", true).single();
-  if (authError || !authRow || !supplied || !constantEqual(await sha256(supplied), String(authRow.secret_sha256))) {
+  const { data: authRow, error: authError } = await supabase
+    .from("job_refresh_auth")
+    .select("secret_sha256")
+    .eq("id", true)
+    .single();
+  if (
+    authError ||
+    !authRow ||
+    !supplied ||
+    !constantEqual(await sha256(supplied), String(authRow.secret_sha256))
+  ) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: run, error: runError } = await supabase.from("job_refresh_runs").insert({ status: "running" }).select("id").single();
-  if (runError || !run?.id) return Response.json({ error: "Could not create refresh audit record" }, { status: 500 });
+  const { data: run, error: runError } = await supabase
+    .from("job_refresh_runs")
+    .insert({ status: "running" })
+    .select("id")
+    .single();
+  if (runError || !run?.id)
+    return Response.json({ error: "Could not create refresh audit record" }, { status: 500 });
 
   try {
     const feeds = await Promise.all([
@@ -342,36 +525,80 @@ Deno.serve(async (req) => {
       adzunaFeed(),
     ]);
     const summary: Record<string, unknown> = {};
-    let attempted = 0, failed = 0, imported = 0;
+    let attempted = 0,
+      failed = 0,
+      imported = 0;
 
     for (const feed of feeds) {
       if (feed.disabled) {
-        summary[feed.key] = { source: feed.source, display_name: feed.displayName, configured: feed.configured ?? false, enabled: false, disabled: true, fetched: 0, upserted: 0, ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}) };
+        summary[feed.key] = {
+          source: feed.source,
+          display_name: feed.displayName,
+          configured: feed.configured ?? false,
+          enabled: false,
+          disabled: true,
+          fetched: 0,
+          upserted: 0,
+          ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}),
+        };
         continue;
       }
       attempted += 1;
       if (feed.error) {
         failed += 1;
-        summary[feed.key] = { source: feed.source, display_name: feed.displayName, configured: feed.configured ?? true, enabled: true, fetched: 0, upserted: 0, error: feed.error, ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}) };
+        summary[feed.key] = {
+          source: feed.source,
+          display_name: feed.displayName,
+          configured: feed.configured ?? true,
+          enabled: true,
+          fetched: 0,
+          upserted: 0,
+          error: feed.error,
+          ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}),
+        };
         continue;
       }
       try {
         const upserted = await snapshotUpsert(supabase, feed);
         imported += upserted;
-        summary[feed.key] = { source: feed.source, display_name: feed.displayName, configured: feed.configured ?? true, enabled: true, fetched: feed.jobs.length, upserted, ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}) };
+        summary[feed.key] = {
+          source: feed.source,
+          display_name: feed.displayName,
+          configured: feed.configured ?? true,
+          enabled: true,
+          fetched: feed.jobs.length,
+          upserted,
+          ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}),
+        };
       } catch (error) {
         failed += 1;
-        summary[feed.key] = { source: feed.source, display_name: feed.displayName, configured: feed.configured ?? true, enabled: true, fetched: feed.jobs.length, upserted: 0, error: error instanceof Error ? error.message : "Database update failed", ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}) };
+        summary[feed.key] = {
+          source: feed.source,
+          display_name: feed.displayName,
+          configured: feed.configured ?? true,
+          enabled: true,
+          fetched: feed.jobs.length,
+          upserted: 0,
+          error: error instanceof Error ? error.message : "Database update failed",
+          ...(feed.externalIdPrefix ? { external_id_prefix: feed.externalIdPrefix } : {}),
+        };
       }
     }
 
-    const status = failed === 0 ? "success" : failed < Math.max(attempted, 1) ? "partial" : "failed";
-    await supabase.from("job_refresh_runs").update({ status, finished_at: new Date().toISOString(), summary }).eq("id", run.id);
+    const status =
+      failed === 0 ? "success" : failed < Math.max(attempted, 1) ? "partial" : "failed";
+    await supabase
+      .from("job_refresh_runs")
+      .update({ status, finished_at: new Date().toISOString(), summary })
+      .eq("id", run.id);
     await supabase.rpc("jobcraft_run_feed_maintenance");
     return Response.json({ ok: status !== "failed", status, imported, sources: summary });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown ATS refresh error";
-    await supabase.from("job_refresh_runs").update({ status: "failed", finished_at: new Date().toISOString(), error: message }).eq("id", run.id);
+    await supabase
+      .from("job_refresh_runs")
+      .update({ status: "failed", finished_at: new Date().toISOString(), error: message })
+      .eq("id", run.id);
     return Response.json({ error: message }, { status: 500 });
   }
 });

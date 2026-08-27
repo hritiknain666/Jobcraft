@@ -24,7 +24,9 @@ export type TheirStackResponse = {
   metadata?: { total_results?: number };
 };
 
-export async function fetchTheirStackIndia(input: { page?: number; limit?: number } = {}): Promise<TheirStackResponse> {
+export async function fetchTheirStackIndia(
+  input: { page?: number; limit?: number } = {},
+): Promise<TheirStackResponse> {
   const { apiKey } = requireTheirStackConfig();
   const page = Math.min(Math.max(Math.trunc(input.page ?? 0), 0), 4);
   const limit = Math.min(Math.max(Math.trunc(input.limit ?? 10), 1), 25);

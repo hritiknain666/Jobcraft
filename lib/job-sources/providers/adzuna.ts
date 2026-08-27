@@ -14,21 +14,23 @@ export const normalizeAdzunaIndia: JobSourceAdapter<AdzunaSearchResponse> = (pay
     const description = job.description ?? "";
     const metadata = extractJobMetadata(job.title, description);
 
-    return [normalizeJob({
-      source: "Adzuna",
-      externalId: String(job.id),
-      title: job.title,
-      company: job.company.display_name,
-      location: job.location?.display_name ?? "India",
-      workMode: metadata.workMode,
-      experienceMin: null,
-      experienceMax: null,
-      salaryMinLpa: null,
-      salaryMaxLpa: null,
-      skills: metadata.skills,
-      description,
-      applyUrl: job.redirect_url ?? null,
-      postedAt: job.created ?? null,
-      isSample: false,
-    })];
+    return [
+      normalizeJob({
+        source: "Adzuna",
+        externalId: String(job.id),
+        title: job.title,
+        company: job.company.display_name,
+        location: job.location?.display_name ?? "India",
+        workMode: metadata.workMode,
+        experienceMin: null,
+        experienceMax: null,
+        salaryMinLpa: null,
+        salaryMaxLpa: null,
+        skills: metadata.skills,
+        description,
+        applyUrl: job.redirect_url ?? null,
+        postedAt: job.created ?? null,
+        isSample: false,
+      }),
+    ];
   });

@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { safeUploadFilename, validateUpload } from "@/lib/uploads/file-validation";
 
-
 export async function saveCertificate(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const name = String(formData.get("name") ?? "").trim();
@@ -20,7 +21,8 @@ export async function saveCertificate(formData: FormData) {
   const file = formData.get("file") as File | null;
 
   if (!name || !issuer) redirect("/certificates?error=Certificate+name+and+issuer+are+required");
-  if (credentialUrl && !/^https?:\/\//i.test(credentialUrl)) redirect("/certificates?error=Credential+URL+must+start+with+http+or+https");
+  if (credentialUrl && !/^https?:\/\//i.test(credentialUrl))
+    redirect("/certificates?error=Credential+URL+must+start+with+http+or+https");
 
   let storagePath: string | null = null;
   if (file && file.size > 0) {
@@ -28,7 +30,9 @@ export async function saveCertificate(formData: FormData) {
     if (!validation.valid) redirect(`/certificates?error=${encodeURIComponent(validation.error)}`);
     const safeName = safeUploadFilename(file.name);
     storagePath = `${user.id}/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage.from("certificates").upload(storagePath, file, { upsert: false, contentType: validation.contentType });
+    const { error: uploadError } = await supabase.storage
+      .from("certificates")
+      .upload(storagePath, file, { upsert: false, contentType: validation.contentType });
     if (uploadError) redirect(`/certificates?error=${encodeURIComponent(uploadError.message)}`);
   }
 
@@ -55,12 +59,20 @@ export async function saveCertificate(formData: FormData) {
 
 export async function deleteCertificate(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const id = String(formData.get("id") ?? "");
-  const { data: certificate } = await supabase.from("certificates").select("storage_path").eq("id", id).eq("user_id", user.id).maybeSingle();
-  if (certificate?.storage_path) await supabase.storage.from("certificates").remove([certificate.storage_path]);
+  const { data: certificate } = await supabase
+    .from("certificates")
+    .select("storage_path")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (certificate?.storage_path)
+    await supabase.storage.from("certificates").remove([certificate.storage_path]);
   await supabase.from("certificates").delete().eq("id", id).eq("user_id", user.id);
 
   revalidatePath("/certificates");

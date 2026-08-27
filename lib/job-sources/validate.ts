@@ -10,15 +10,25 @@ export function validateNormalizedJob(job: NormalizedJob) {
     throw new Error("Normalized jobs require source, externalId, title, and company.");
   }
 
-  if (job.experienceMin !== null && (!Number.isFinite(job.experienceMin) || job.experienceMin < 0)) {
+  if (
+    job.experienceMin !== null &&
+    (!Number.isFinite(job.experienceMin) || job.experienceMin < 0)
+  ) {
     throw new Error(`Invalid experienceMin for ${jobIdentity(job)}.`);
   }
 
-  if (job.experienceMax !== null && (!Number.isFinite(job.experienceMax) || job.experienceMax < 0)) {
+  if (
+    job.experienceMax !== null &&
+    (!Number.isFinite(job.experienceMax) || job.experienceMax < 0)
+  ) {
     throw new Error(`Invalid experienceMax for ${jobIdentity(job)}.`);
   }
 
-  if (job.experienceMin !== null && job.experienceMax !== null && job.experienceMax < job.experienceMin) {
+  if (
+    job.experienceMin !== null &&
+    job.experienceMax !== null &&
+    job.experienceMax < job.experienceMin
+  ) {
     throw new Error(`Invalid experience range for ${jobIdentity(job)}.`);
   }
 
@@ -30,7 +40,11 @@ export function validateNormalizedJob(job: NormalizedJob) {
     throw new Error(`Invalid salaryMaxLpa for ${jobIdentity(job)}.`);
   }
 
-  if (job.salaryMinLpa !== null && job.salaryMaxLpa !== null && job.salaryMaxLpa < job.salaryMinLpa) {
+  if (
+    job.salaryMinLpa !== null &&
+    job.salaryMaxLpa !== null &&
+    job.salaryMaxLpa < job.salaryMinLpa
+  ) {
     throw new Error(`Invalid salary range for ${jobIdentity(job)}.`);
   }
 

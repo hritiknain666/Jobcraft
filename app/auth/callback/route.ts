@@ -11,7 +11,10 @@ export async function GET(request: Request) {
 
   if (!code) {
     const response = NextResponse.redirect(
-      new URL(`/auth/login?error=${encodeURIComponent("The recovery link is invalid or incomplete. Please request a new one.")}`, requestUrl.origin)
+      new URL(
+        `/auth/login?error=${encodeURIComponent("The recovery link is invalid or incomplete. Please request a new one.")}`,
+        requestUrl.origin,
+      ),
     );
     response.headers.set("Cache-Control", "private, no-store");
     return response;
@@ -22,7 +25,10 @@ export async function GET(request: Request) {
 
   if (error) {
     const response = NextResponse.redirect(
-      new URL(`/auth/login?error=${encodeURIComponent("The recovery link has expired or was already used. Please request a new one.")}`, requestUrl.origin)
+      new URL(
+        `/auth/login?error=${encodeURIComponent("The recovery link has expired or was already used. Please request a new one.")}`,
+        requestUrl.origin,
+      ),
     );
     response.headers.set("Cache-Control", "private, no-store");
     return response;

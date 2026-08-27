@@ -85,7 +85,10 @@ export function isFreePublicSourceEnabled(env: NodeJS.ProcessEnv = process.env) 
 
 export function requireAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaConfig {
   const config = getAdzunaConfig(env);
-  if (!config) throw new Error("Adzuna access is disabled until ADZUNA_APP_ID and ADZUNA_APP_KEY are configured.");
+  if (!config)
+    throw new Error(
+      "Adzuna access is disabled until ADZUNA_APP_ID and ADZUNA_APP_KEY are configured.",
+    );
   return config;
 }
 
@@ -97,6 +100,7 @@ export function requireJoobleConfig(env: NodeJS.ProcessEnv = process.env): ApiKe
 
 export function requireTheirStackConfig(env: NodeJS.ProcessEnv = process.env): ApiKeyConfig {
   const config = getTheirStackConfig(env);
-  if (!config) throw new Error("TheirStack access is disabled until THEIRSTACK_API_KEY is configured.");
+  if (!config)
+    throw new Error("TheirStack access is disabled until THEIRSTACK_API_KEY is configured.");
   return config;
 }

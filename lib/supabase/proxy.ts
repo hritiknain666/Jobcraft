@@ -50,14 +50,12 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = secure(NextResponse.next({ request: { headers: requestHeaders } }));
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           );
-          Object.entries(headers).forEach(([key, value]) =>
-            response.headers.set(key, value)
-          );
+          Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
         },
       },
-    }
+    },
   );
 
   // Refresh and verify the cookie-backed session for Server Components.
@@ -71,7 +69,9 @@ export async function updateSession(request: NextRequest) {
   if (!authenticated && previewPath) {
     const previewUrl = request.nextUrl.clone();
     previewUrl.pathname = previewPath;
-    const rewritten = secure(NextResponse.rewrite(previewUrl, { request: { headers: requestHeaders } }));
+    const rewritten = secure(
+      NextResponse.rewrite(previewUrl, { request: { headers: requestHeaders } }),
+    );
     response.cookies.getAll().forEach((cookie) => rewritten.cookies.set(cookie));
     return rewritten;
   }

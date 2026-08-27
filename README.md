@@ -82,6 +82,8 @@ Run the core regression suite with:
 npm test
 ```
 
+For repository structure, readability rules, and the full local verification checklist, see [`docs/code-guide.md`](docs/code-guide.md).
+
 ## Environment variables
 
 See `.env.example` for optional provider/deployment variables. Server-only secrets must never use the `NEXT_PUBLIC_` prefix.

@@ -46,7 +46,8 @@ function inferWorkMode(text: string): ExtractedJobMetadata["workMode"] {
   if (/\bhybrid\b/i.test(text)) return "Hybrid";
 
   const remoteMention = /\bremote\b|\bwork\s+from\s+home\b|\bwfh\b/i.test(text);
-  const remoteNegated = /\b(?:not|no)\s+remote\b|\bremote\s+(?:not\s+available|unavailable)\b|\bno\s+wfh\b/i.test(text);
+  const remoteNegated =
+    /\b(?:not|no)\s+remote\b|\bremote\s+(?:not\s+available|unavailable)\b|\bno\s+wfh\b/i.test(text);
   if (remoteMention && !remoteNegated) return "Remote";
 
   if (/\bon[- ]?site\b|\bwork\s+from\s+office\b|\boffice[- ]based\b/i.test(text)) return "On-site";

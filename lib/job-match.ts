@@ -45,7 +45,10 @@ export function calculateJobMatch(input: MatchInput) {
   }
 
   const userExp = Number(input.userExperience ?? 0);
-  const hasExperienceRequirement = input.jobMinExperience !== null && input.jobMinExperience !== undefined && Number.isFinite(Number(input.jobMinExperience));
+  const hasExperienceRequirement =
+    input.jobMinExperience !== null &&
+    input.jobMinExperience !== undefined &&
+    Number.isFinite(Number(input.jobMinExperience));
   const requiredExp = hasExperienceRequirement ? Number(input.jobMinExperience) : null;
   if (requiredExp !== null && requiredExp >= 0) {
     assessedWeight += 15;
@@ -65,8 +68,7 @@ export function calculateJobMatch(input: MatchInput) {
   const jobLocation = input.jobLocation?.trim() ? normalize(input.jobLocation) : null;
   const hasLocationSignal = Boolean(userCity && jobLocation);
   const locationMatches = Boolean(
-    hasLocationSignal &&
-    (jobLocation!.includes(userCity!) || jobMode === "remote")
+    hasLocationSignal && (jobLocation!.includes(userCity!) || jobMode === "remote"),
   );
   if (hasLocationSignal) {
     assessedWeight += 5;
@@ -76,29 +78,42 @@ export function calculateJobMatch(input: MatchInput) {
   const targetRoles = (input.targetRoles ?? []).map(normalize).filter(Boolean);
   const title = normalize(input.jobTitle ?? "");
   const hasRoleSignal = Boolean(title) && targetRoles.length > 0;
-  const roleMatches = hasRoleSignal && targetRoles.some((role) => title.includes(role) || role.includes(title));
+  const roleMatches =
+    hasRoleSignal && targetRoles.some((role) => title.includes(role) || role.includes(title));
   if (hasRoleSignal) {
     assessedWeight += 10;
     earnedWeight += roleMatches ? 10 : 0;
   }
 
   const evidenceCoverage = assessedWeight / 100;
-  const confidence: MatchConfidence = evidenceCoverage >= 0.75 ? "high" : evidenceCoverage >= 0.5 ? "medium" : "limited";
-  const score = assessedWeight > 0
-    ? Math.max(0, Math.min(100, Math.round((earnedWeight / assessedWeight) * 100)))
-    : 0;
+  const confidence: MatchConfidence =
+    evidenceCoverage >= 0.75 ? "high" : evidenceCoverage >= 0.5 ? "medium" : "limited";
+  const score =
+    assessedWeight > 0
+      ? Math.max(0, Math.min(100, Math.round((earnedWeight / assessedWeight) * 100)))
+      : 0;
 
   const strengths: string[] = [];
-  if (input.jobSkills.length > 0 && matchedSkills.length) strengths.push(`You match ${matchedSkills.length} of ${input.jobSkills.length} listed skills.`);
-  if (requiredExp !== null && userExp >= requiredExp) strengths.push("Your experience meets the listed minimum.");
+  if (input.jobSkills.length > 0 && matchedSkills.length)
+    strengths.push(`You match ${matchedSkills.length} of ${input.jobSkills.length} listed skills.`);
+  if (requiredExp !== null && userExp >= requiredExp)
+    strengths.push("Your experience meets the listed minimum.");
   if (hasModeSignal && modeMatches) strengths.push("The work mode fits your preferences.");
   if (hasRoleSignal && roleMatches) strengths.push("The role aligns with your target jobs.");
 
   const improvements: string[] = [];
-  if (missingSkills.length) improvements.push(`Strengthen or demonstrate: ${missingSkills.slice(0, 4).join(", ")}.`);
-  if (requiredExp !== null && userExp < requiredExp) improvements.push(`The role asks for about ${requiredExp} years of experience; highlight relevant projects and measurable results.`);
-  if (hasModeSignal && !modeMatches) improvements.push("The listed work mode does not match your saved preferences.");
-  if (hasLocationSignal && !locationMatches) improvements.push("Check whether the location works for you or whether relocation is possible.");
+  if (missingSkills.length)
+    improvements.push(`Strengthen or demonstrate: ${missingSkills.slice(0, 4).join(", ")}.`);
+  if (requiredExp !== null && userExp < requiredExp)
+    improvements.push(
+      `The role asks for about ${requiredExp} years of experience; highlight relevant projects and measurable results.`,
+    );
+  if (hasModeSignal && !modeMatches)
+    improvements.push("The listed work mode does not match your saved preferences.");
+  if (hasLocationSignal && !locationMatches)
+    improvements.push(
+      "Check whether the location works for you or whether relocation is possible.",
+    );
 
   return {
     score,

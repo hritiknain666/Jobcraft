@@ -8,7 +8,9 @@ export type JobFacets = {
 };
 
 const uniqueSorted = (values: string[]) =>
-  [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b),
+  );
 
 export async function getJobFacets(supabase: SupabaseClient): Promise<JobFacets> {
   const { data, error } = await supabase
@@ -26,7 +28,9 @@ export async function getJobFacets(supabase: SupabaseClient): Promise<JobFacets>
   return {
     titles: uniqueSorted(jobs.map((job) => String(job.title ?? ""))),
     locations: uniqueSorted(jobs.map((job) => String(job.location_normalized ?? ""))),
-    skills: uniqueSorted(jobs.flatMap((job) => Array.isArray(job.skills) ? job.skills.map(String) : [])),
+    skills: uniqueSorted(
+      jobs.flatMap((job) => (Array.isArray(job.skills) ? job.skills.map(String) : [])),
+    ),
     workModes: uniqueSorted(jobs.map((job) => String(job.work_mode ?? ""))),
   };
 }

@@ -13,7 +13,12 @@ export function safeExternalUrl(value: string | null | undefined) {
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
 
     const hostname = url.hostname.toLowerCase();
-    if (!hostname || hostname === "localhost" || hostname.endsWith(".local") || isPrivateIpv4(hostname)) {
+    if (
+      !hostname ||
+      hostname === "localhost" ||
+      hostname.endsWith(".local") ||
+      isPrivateIpv4(hostname)
+    ) {
       return null;
     }
 

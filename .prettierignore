@@ -1,0 +1,9 @@
+.next
+.open-next
+.test-build
+.wrangler
+node_modules
+package-lock.json
+public
+supabase/migrations
+supabase/schema.sql

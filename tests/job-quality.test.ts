@@ -17,8 +17,14 @@ test("preserves unknown location searches", () => {
 });
 
 test("accepts public http and https application URLs", () => {
-  assert.equal(safeExternalUrl("https://jobs.example.com/role")?.startsWith("https://jobs.example.com/role"), true);
-  assert.equal(safeExternalUrl("http://example.com/apply")?.startsWith("http://example.com/apply"), true);
+  assert.equal(
+    safeExternalUrl("https://jobs.example.com/role")?.startsWith("https://jobs.example.com/role"),
+    true,
+  );
+  assert.equal(
+    safeExternalUrl("http://example.com/apply")?.startsWith("http://example.com/apply"),
+    true,
+  );
 });
 
 test("rejects unsafe application URLs", () => {

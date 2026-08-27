@@ -34,7 +34,11 @@ async function persist(input: ProviderImportInput): Promise<RefreshResult> {
   try {
     const batch = await loadProviderBatch(input);
     if (!batch.canPersist) {
-      return { provider: batch.provider, status: "skipped", reason: batch.persistenceReason ?? "Provider is not enabled." };
+      return {
+        provider: batch.provider,
+        status: "skipped",
+        reason: batch.persistenceReason ?? "Provider is not enabled.",
+      };
     }
 
     const admin = createAdminClient();
@@ -69,7 +73,10 @@ async function persist(input: ProviderImportInput): Promise<RefreshResult> {
 
 export async function POST(request: Request) {
   if (!process.env.JOB_IMPORT_SECRET?.trim() || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    return NextResponse.json({ error: "Job refresh is not configured on the server." }, { status: 503 });
+    return NextResponse.json(
+      { error: "Job refresh is not configured on the server." },
+      { status: 503 },
+    );
   }
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -116,8 +123,11 @@ export async function POST(request: Request) {
       acc.deactivated += result.deactivated ?? 0;
       return acc;
     },
-    { refreshed: 0, skipped: 0, failed: 0, normalized: 0, upserted: 0, deactivated: 0 }
+    { refreshed: 0, skipped: 0, failed: 0, normalized: 0, upserted: 0, deactivated: 0 },
   );
 
-  return NextResponse.json({ summary, results }, { status: summary.failed > 0 && summary.refreshed === 0 ? 502 : 200 });
+  return NextResponse.json(
+    { summary, results },
+    { status: summary.failed > 0 && summary.refreshed === 0 ? 502 : 200 },
+  );
 }

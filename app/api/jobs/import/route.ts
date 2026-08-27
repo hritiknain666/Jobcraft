@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         providerReportedCount: batch.providerReportedCount,
         normalized: batch.jobs.length,
         canPersist: batch.canPersist,
-        persistenceReason: batch.canPersist ? null : batch.persistenceReason ?? null,
+        persistenceReason: batch.canPersist ? null : (batch.persistenceReason ?? null),
         jobs: batch.jobs.slice(0, 5).map((job) => ({
           externalId: job.externalId,
           title: job.title,
@@ -58,9 +58,12 @@ export async function POST(request: Request) {
     }
 
     if (!batch.canPersist) {
-      return NextResponse.json({
-        error: batch.persistenceReason ?? `${batch.provider} publishing is not enabled.`,
-      }, { status: 409 });
+      return NextResponse.json(
+        {
+          error: batch.persistenceReason ?? `${batch.provider} publishing is not enabled.`,
+        },
+        { status: 409 },
+      );
     }
 
     const admin = createAdminClient();
@@ -86,6 +89,9 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Job import failed.";
     const badRequest = /unsupported|require|invalid/i.test(message);
     const notConfigured = /disabled until|not configured/i.test(message);
-    return NextResponse.json({ error: message }, { status: badRequest ? 400 : notConfigured ? 409 : 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: badRequest ? 400 : notConfigured ? 409 : 500 },
+    );
   }
 }

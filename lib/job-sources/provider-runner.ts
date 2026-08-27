@@ -1,4 +1,9 @@
-import { getGreenhouseBoards, getLeverSites, isAdzunaPublishingReady, isFreePublicSourceEnabled } from "./config";
+import {
+  getGreenhouseBoards,
+  getLeverSites,
+  isAdzunaPublishingReady,
+  isFreePublicSourceEnabled,
+} from "./config";
 import { fetchAdzunaIndia } from "./fetch-adzuna";
 import { fetchArbeitnow } from "./fetch-arbeitnow";
 import { fetchGreenhouseBoard } from "./fetch-greenhouse";
@@ -43,13 +48,19 @@ export async function loadProviderBatch(input: ProviderImportInput): Promise<Pro
   const resultsPerPage = Math.max(Math.trunc(input.resultsPerPage ?? 20), 1);
 
   if (provider === "adzuna") {
-    const payload = await fetchAdzunaIndia({ what: input.what, where: input.where, page, resultsPerPage });
+    const payload = await fetchAdzunaIndia({
+      what: input.what,
+      where: input.where,
+      page,
+      resultsPerPage,
+    });
     return {
       provider: "Adzuna",
       jobs: normalizeAdzunaIndia(payload),
       providerReportedCount: payload.count ?? null,
       canPersist: isAdzunaPublishingReady(),
-      persistenceReason: "Adzuna requires provider/commercial approval and verified production attribution.",
+      persistenceReason:
+        "Adzuna requires provider/commercial approval and verified production attribution.",
       rawProviderSamples: (payload.results ?? []).slice(0, 5).map((job) => ({
         externalId: job.id ?? null,
         salaryMin: job.salary_min ?? null,
@@ -94,7 +105,10 @@ export async function loadProviderBatch(input: ProviderImportInput): Promise<Pro
   }
 
   if (provider === "theirstack") {
-    const payload = await fetchTheirStackIndia({ page: page - 1, limit: Math.min(resultsPerPage, 25) });
+    const payload = await fetchTheirStackIndia({
+      page: page - 1,
+      limit: Math.min(resultsPerPage, 25),
+    });
     return {
       provider: "TheirStack",
       jobs: normalizeTheirStackIndia(payload),
@@ -114,7 +128,9 @@ export async function loadProviderBatch(input: ProviderImportInput): Promise<Pro
       jobs: normalizeGreenhouseIndia(payload),
       providerReportedCount: payload.jobs.length,
       canPersist: configured && isFreePublicSourceEnabled(),
-      persistenceReason: configured ? "Free public job sources are disabled by configuration." : "Greenhouse board is not in GREENHOUSE_BOARD_TOKENS.",
+      persistenceReason: configured
+        ? "Free public job sources are disabled by configuration."
+        : "Greenhouse board is not in GREENHOUSE_BOARD_TOKENS.",
       snapshot: { source: "Greenhouse", externalIdPrefix: `${payload.boardToken}:` },
     };
   }
@@ -124,13 +140,17 @@ export async function loadProviderBatch(input: ProviderImportInput): Promise<Pro
     const company = input.company?.trim();
     if (!site || !company) throw new Error("Lever imports require both site and company.");
     const payload = await fetchLeverSite(site, company);
-    const configured = getLeverSites().some((entry) => entry.site === payload.site && entry.company === payload.company);
+    const configured = getLeverSites().some(
+      (entry) => entry.site === payload.site && entry.company === payload.company,
+    );
     return {
       provider: "Lever",
       jobs: normalizeLeverIndia(payload),
       providerReportedCount: payload.jobs.length,
       canPersist: configured && isFreePublicSourceEnabled(),
-      persistenceReason: configured ? "Free public job sources are disabled by configuration." : "Lever site is not in LEVER_SITES.",
+      persistenceReason: configured
+        ? "Free public job sources are disabled by configuration."
+        : "Lever site is not in LEVER_SITES.",
       snapshot: { source: "Lever", externalIdPrefix: `${payload.site}:` },
     };
   }

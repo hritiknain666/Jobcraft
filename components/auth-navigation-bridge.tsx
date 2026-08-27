@@ -10,7 +10,15 @@ export default function AuthNavigationBridge() {
 
   useEffect(() => {
     function onClick(event: MouseEvent) {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
 
       const target = event.target as Element | null;
       const anchor = target?.closest("a") as HTMLAnchorElement | null;
@@ -24,7 +32,12 @@ export default function AuthNavigationBridge() {
       }
 
       if (url.origin !== window.location.origin) return;
-      const mode = url.pathname === "/auth/login" ? "login" : url.pathname === "/auth/signup" ? "signup" : null;
+      const mode =
+        url.pathname === "/auth/login"
+          ? "login"
+          : url.pathname === "/auth/signup"
+            ? "signup"
+            : null;
       if (!mode) return;
 
       event.preventDefault();

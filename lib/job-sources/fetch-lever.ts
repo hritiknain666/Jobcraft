@@ -24,10 +24,14 @@ export type LeverSitePayload = {
   jobs: LeverJob[];
 };
 
-export async function fetchLeverSite(siteInput: string, companyInput: string): Promise<LeverSitePayload> {
+export async function fetchLeverSite(
+  siteInput: string,
+  companyInput: string,
+): Promise<LeverSitePayload> {
   const site = siteInput.trim().slice(0, 120);
   const company = companyInput.trim().slice(0, 180);
-  if (!site || !/^[a-z0-9_-]+$/i.test(site) || !company) throw new Error("Invalid Lever site configuration.");
+  if (!site || !/^[a-z0-9_-]+$/i.test(site) || !company)
+    throw new Error("Invalid Lever site configuration.");
 
   const jobs: LeverJob[] = [];
   const pageSize = 100;
@@ -42,7 +46,7 @@ export async function fetchLeverSite(siteInput: string, companyInput: string): P
       cache: "no-store",
     });
     if (!response.ok) throw new Error(`Lever request failed with status ${response.status}.`);
-    const batch = await response.json() as LeverJob[];
+    const batch = (await response.json()) as LeverJob[];
     jobs.push(...batch);
     if (batch.length < pageSize) break;
   }

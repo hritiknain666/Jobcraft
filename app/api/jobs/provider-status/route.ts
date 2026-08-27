@@ -20,16 +20,21 @@ export async function GET() {
   const hasError = sources.some((source: { status?: string }) => source.status === "error");
   const hasDegraded = sources.some((source: { status?: string }) => source.status === "degraded");
   const unhealthySources = sources
-    .filter((source: { status?: string }) => source.status === "error" || source.status === "degraded")
+    .filter(
+      (source: { status?: string }) => source.status === "error" || source.status === "degraded",
+    )
     .map((source: { source_key?: string }) => source.source_key ?? "unknown");
 
   if (hasError || hasDegraded) {
     logMonitoringEvent("warn", "provider_status_degraded", { unhealthySources });
   }
 
-  return NextResponse.json({
-    status: hasError ? "degraded" : hasDegraded ? "degraded" : "healthy",
-    sources,
-    checkedAt: new Date().toISOString(),
-  }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(
+    {
+      status: hasError ? "degraded" : hasDegraded ? "degraded" : "healthy",
+      sources,
+      checkedAt: new Date().toISOString(),
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

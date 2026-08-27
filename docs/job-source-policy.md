@@ -39,6 +39,7 @@ Jooble and Arbeitnow remain non-core backup code only. They are not part of the 
 Official API: https://remotive.com/remote-jobs/api
 
 Operational requirements:
+
 - Mention Remotive as the source.
 - Link back to the Remotive URL supplied by the API.
 - Do not require signup/email capture to reveal a Remotive listing.
@@ -51,6 +52,7 @@ JobCraft implementation: public browsing, visible per-listing attribution, origi
 Official API/fair-use page: https://jobicy.com/jobs-rss-feed
 
 Operational requirements:
+
 - Keep Jobicy as the original source.
 - Preserve the canonical Jobicy job URL.
 - Do not present Jobicy listings as JobCraft's own postings.
@@ -63,6 +65,7 @@ JobCraft implementation: visible source attribution, canonical provider URL and 
 Official API: https://himalayas.app/api
 
 Operational requirements:
+
 - Mention Himalayas as the original source.
 - Link back to Himalayas.
 - Do not submit Himalayas jobs to third-party aggregators.
@@ -81,6 +84,7 @@ JobCraft implementation is deliberately conservative: visible source attribution
 Production secret: `THEIRSTACK_API_KEY` in Supabase Edge Function secrets.
 
 Free-plan guardrails:
+
 - India-only query.
 - Maximum five returned jobs per scheduled refresh.
 - Daily refresh only.
@@ -104,6 +108,7 @@ External IDs are namespaced as `site:postingId`.
 ## Adzuna
 
 Environment/secrets prepared:
+
 - `ADZUNA_APP_ID`
 - `ADZUNA_APP_KEY`
 - `ADZUNA_PUBLISHING_READY`
@@ -116,6 +121,7 @@ When enabled, visible Adzuna attribution must remain in the UI.
 ## Quality and freshness layer
 
 The `jobs` table stores derived quality fields used by the public feed:
+
 - canonical title/company
 - normalized location
 - canonical application/job fingerprint
@@ -131,6 +137,7 @@ Canonical Greenhouse job IDs and Lever site/posting IDs are recognized even when
 ## Source health monitoring
 
 `job_source_health` stores sanitized operational state including:
+
 - last run and last success
 - fetched/upserted counts
 - current active job count
@@ -142,6 +149,7 @@ Canonical Greenhouse job IDs and Lever site/posting IDs are recognized even when
 ## Refresh schedule
 
 Supabase is the production scheduler:
+
 - `refresh-free-jobs`: daily at 02:17 UTC for the six general sources.
 - `refresh-ats-jobs`: daily at 02:25 UTC for Greenhouse/Lever and gated Adzuna.
 - feed maintenance/dedupe: daily at 02:35 UTC.

@@ -17,20 +17,22 @@ export function normalizeTheirStackIndia(payload: TheirStackResponse) {
       .map((value) => value.replace(/[-_]+/g, " ").trim())
       .filter(Boolean);
 
-    return [normalizeJob({
-      source: "TheirStack",
-      externalId: String(job.id),
-      title: job.job_title,
-      company: job.company,
-      location: job.long_location ?? job.location ?? "India",
-      workMode: job.remote ? "Remote" : job.hybrid ? "Hybrid" : extracted.workMode,
-      salaryMinLpa: annualInrToLpa(job.min_annual_salary, job.salary_currency),
-      salaryMaxLpa: annualInrToLpa(job.max_annual_salary, job.salary_currency),
-      skills: [...new Set([...sourceSkills, ...extracted.skills])].slice(0, 40),
-      description,
-      applyUrl: job.url ?? job.source_url ?? null,
-      postedAt: job.date_posted ?? null,
-      isSample: false,
-    })];
+    return [
+      normalizeJob({
+        source: "TheirStack",
+        externalId: String(job.id),
+        title: job.job_title,
+        company: job.company,
+        location: job.long_location ?? job.location ?? "India",
+        workMode: job.remote ? "Remote" : job.hybrid ? "Hybrid" : extracted.workMode,
+        salaryMinLpa: annualInrToLpa(job.min_annual_salary, job.salary_currency),
+        salaryMaxLpa: annualInrToLpa(job.max_annual_salary, job.salary_currency),
+        skills: [...new Set([...sourceSkills, ...extracted.skills])].slice(0, 40),
+        description,
+        applyUrl: job.url ?? job.source_url ?? null,
+        postedAt: job.date_posted ?? null,
+        isSample: false,
+      }),
+    ];
   });
 }

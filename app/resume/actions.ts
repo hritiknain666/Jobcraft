@@ -7,7 +7,9 @@ import { safeUploadFilename, validateUpload } from "@/lib/uploads/file-validatio
 
 export async function uploadResume(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const file = formData.get("file") as File | null;
@@ -18,10 +20,14 @@ export async function uploadResume(formData: FormData) {
 
   const safeName = safeUploadFilename(file.name);
   const path = `${user.id}/${crypto.randomUUID()}-${safeName}`;
-  const { error: uploadError } = await supabase.storage.from("resumes").upload(path, file, { upsert: false, contentType: validation.contentType });
+  const { error: uploadError } = await supabase.storage
+    .from("resumes")
+    .upload(path, file, { upsert: false, contentType: validation.contentType });
   if (uploadError) redirect(`/resume?error=${encodeURIComponent(uploadError.message)}`);
 
-  const { error } = await supabase.from("resumes").insert({ user_id: user.id, name, storage_path: path, is_primary: false });
+  const { error } = await supabase
+    .from("resumes")
+    .insert({ user_id: user.id, name, storage_path: path, is_primary: false });
   if (error) {
     await supabase.storage.from("resumes").remove([path]);
     redirect(`/resume?error=${encodeURIComponent(error.message)}`);
@@ -33,10 +39,17 @@ export async function uploadResume(formData: FormData) {
 
 export async function deleteResume(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
   const id = String(formData.get("id") ?? "");
-  const { data: resume } = await supabase.from("resumes").select("storage_path").eq("id", id).eq("user_id", user.id).maybeSingle();
+  const { data: resume } = await supabase
+    .from("resumes")
+    .select("storage_path")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
   if (resume?.storage_path) await supabase.storage.from("resumes").remove([resume.storage_path]);
   await supabase.from("resumes").delete().eq("id", id).eq("user_id", user.id);
   revalidatePath("/resume");
@@ -44,7 +57,9 @@ export async function deleteResume(formData: FormData) {
 
 export async function setPrimaryResume(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
   const id = String(formData.get("id") ?? "");
   await supabase.from("resumes").update({ is_primary: false }).eq("user_id", user.id);

@@ -18,7 +18,9 @@ export type JoobleResponse = {
   jobs?: JoobleJob[];
 };
 
-export async function fetchJoobleIndia(input: { keywords?: string; page?: number; resultsPerPage?: number } = {}): Promise<JoobleResponse> {
+export async function fetchJoobleIndia(
+  input: { keywords?: string; page?: number; resultsPerPage?: number } = {},
+): Promise<JoobleResponse> {
   const { apiKey } = requireJoobleConfig();
   const page = Math.min(Math.max(Math.trunc(input.page ?? 1), 1), 50);
   const resultsPerPage = Math.min(Math.max(Math.trunc(input.resultsPerPage ?? 20), 1), 50);

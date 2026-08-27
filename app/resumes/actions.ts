@@ -7,7 +7,9 @@ import { safeUploadFilename, validateUpload } from "@/lib/uploads/file-validatio
 
 export async function uploadResume(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const file = formData.get("resume");
@@ -45,7 +47,9 @@ export async function uploadResume(formData: FormData) {
 
 export async function deleteResume(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const id = String(formData.get("id") ?? "");
