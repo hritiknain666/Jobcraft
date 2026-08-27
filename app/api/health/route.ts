@@ -19,11 +19,17 @@ export async function GET() {
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("get_jobcraft_operational_health");
+    const { data, error } = await supabase
+      .from("jobcraft_operational_health_snapshot")
+      .select(
+        "unhealthy_sources,refresh_status,refresh_triggered_at,refresh_finished_at,ai_users_at_limit",
+      )
+      .eq("id", true)
+      .maybeSingle();
     if (error) throw error;
 
-    const health = (data?.[0] ?? null) as OperationalHealth | null;
-    if (!health) throw new Error("Operational health RPC returned no result.");
+    const health = data as OperationalHealth | null;
+    if (!health) throw new Error("Operational health snapshot returned no result.");
 
     const unhealthySources = health.unhealthy_sources ?? [];
     const refreshFailed = health.refresh_status === "failed" || health.refresh_status === "missing";
