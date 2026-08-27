@@ -78,7 +78,7 @@ test("production monitoring checks health and provider degradation", () => {
     "supabase/migrations/20260827101806_add_operational_health_snapshot.sql",
   );
   const restrictionMigration = source(
-    "supabase/migrations/20260827102100_restrict_operational_health_rpc.sql",
+    "supabase/migrations/20260827102335_restrict_operational_health_rpc.sql",
   );
 
   assert.match(workflow, /cron:\s*"\*\/15 \* \* \* \*"/i);
