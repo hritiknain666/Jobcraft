@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateCareerAssistantResponse, isAiConfigured } from "@/lib/ai/openai";
+import { logMonitoringEvent } from "@/lib/monitoring";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_PROMPT_LENGTH = 2_000;
@@ -38,13 +39,14 @@ export async function POST(request: Request) {
     p_window_seconds: RATE_WINDOW_SECONDS,
   });
   if (rateError) {
-    console.error("Career assistant rate limit check failed", rateError);
+    logMonitoringEvent("error", "ai_rate_limit_check_failed", { error: rateError.message });
     return NextResponse.json({ error: "The AI assistant is temporarily unavailable." }, { status: 503 });
   }
 
   const rate = (Array.isArray(rateRows) ? rateRows[0] : rateRows) as RateLimitResult | null;
   if (!rate?.allowed) {
     const retryAfter = Math.max(1, rate?.retry_after_seconds ?? RATE_WINDOW_SECONDS);
+    logMonitoringEvent("warn", "ai_rate_limit_blocked", { retryAfterSeconds: retryAfter });
     return NextResponse.json(
       { error: "Too many AI requests. Please try again shortly." },
       { status: 429, headers: { "Retry-After": String(retryAfter), "X-RateLimit-Remaining": "0" } }
@@ -121,7 +123,9 @@ export async function POST(request: Request) {
       { headers: { "X-RateLimit-Remaining": String(rate.remaining) } }
     );
   } catch (error) {
-    console.error("Career assistant request failed", error);
+    logMonitoringEvent("error", "ai_request_failed", {
+      error: error instanceof Error ? error.message : "Unknown AI request error",
+    });
     return NextResponse.json({ error: "The AI assistant could not answer right now." }, { status: 502 });
   }
 }

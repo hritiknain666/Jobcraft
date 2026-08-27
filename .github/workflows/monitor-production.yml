@@ -1,0 +1,53 @@
+name: Production monitoring
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jobcraft-production-monitoring
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE_URL: ${{ vars.JOBCRAFT_SITE_URL || 'https://jobcraft.hritiknain666-35e.workers.dev' }}
+    steps:
+      - name: Check operational health
+        shell: bash
+        run: |
+          set -euo pipefail
+          SITE_URL="${SITE_URL%/}"
+          HEALTH="$(curl --fail-with-body --silent --show-error --max-time 20 "${SITE_URL}/api/health")"
+          echo "Operational health: ${HEALTH}"
+          HEALTH_JSON="${HEALTH}" node <<'NODE'
+          const health = JSON.parse(process.env.HEALTH_JSON);
+          if (health?.status !== "ok") {
+            console.error(`Operational health alert: ${JSON.stringify(health?.checks ?? health)}`);
+            process.exit(1);
+          }
+          NODE
+
+      - name: Check provider feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          SITE_URL="${SITE_URL%/}"
+          PROVIDERS="$(curl --fail-with-body --silent --show-error --max-time 20 "${SITE_URL}/api/jobs/provider-status")"
+          echo "Provider health: ${PROVIDERS}"
+          PROVIDER_JSON="${PROVIDERS}" node <<'NODE'
+          const providers = JSON.parse(process.env.PROVIDER_JSON);
+          if (providers?.status !== "healthy") {
+            const unhealthy = Array.isArray(providers?.sources)
+              ? providers.sources.filter((source) => ["degraded", "error"].includes(source?.status)).map((source) => source?.source_key)
+              : [];
+            console.error(`Provider degradation alert: ${unhealthy.join(", ") || "status unavailable"}`);
+            process.exit(1);
+          }
+          NODE

@@ -42,3 +42,16 @@ test("CSP uses a per-request nonce and strict-dynamic", () => {
   assert.match(proxy, /script-src 'nonce-\$\{nonce\}' 'strict-dynamic'/);
   assert.doesNotMatch(proxy, /script-src[^\n]*unsafe-inline/);
 });
+
+test("production monitoring checks health and provider degradation", () => {
+  const workflow = source(".github/workflows/monitor-production.yml");
+  const worker = source("wrangler.jsonc");
+  const health = source("app/api/health/route.ts");
+
+  assert.match(workflow, /cron:\s*"\*\/15 \* \* \* \*"/i);
+  assert.match(workflow, /\/api\/health/);
+  assert.match(workflow, /\/api\/jobs\/provider-status/);
+  assert.match(worker, /"observability"[\s\S]*"head_sampling_rate": 1/i);
+  assert.match(health, /aiRateLimits[\s\S]*usersAtLimit15m/);
+  assert.match(health, /job_refresh_runs/);
+});

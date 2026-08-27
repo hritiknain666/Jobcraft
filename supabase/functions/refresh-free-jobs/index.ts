@@ -294,10 +294,12 @@ Deno.serve(async (req) => {
     let failed = 0, imported = 0;
     for (const result of results) {
       if (result.rateLimited) {
+        console.warn({ event: "provider_rate_limited", provider: result.source });
         summary[result.source] = { source: result.source, display_name: result.source, configured: true, enabled: true, fetched: 0, upserted: 0, rate_limited: true };
         continue;
       }
       if (result.error) {
+        console.error({ event: "provider_refresh_failed", provider: result.source, error: result.error });
         failed += 1;
         summary[result.source] = { source: result.source, display_name: result.source, configured: true, enabled: true, fetched: 0, upserted: 0, error: result.error };
         continue;
@@ -322,9 +324,11 @@ Deno.serve(async (req) => {
     const status = failed === 0 ? "success" : failed < results.length ? "partial" : "failed";
     await supabase.from("job_refresh_runs").update({ status, finished_at: new Date().toISOString(), summary }).eq("id", run.id);
     await supabase.rpc("jobcraft_run_feed_maintenance");
+    console.info({ event: "job_refresh_completed", status, imported, failedProviders: failed });
     return Response.json({ ok: status !== "failed", status, imported, sources: summary });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown refresh error";
+    console.error({ event: "job_refresh_failed", error: message });
     await supabase.from("job_refresh_runs").update({ status: "failed", finished_at: new Date().toISOString(), error: message }).eq("id", run.id);
     return Response.json({ error: message }, { status: 500 });
   }
