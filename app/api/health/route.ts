@@ -1,64 +1,41 @@
 import { NextResponse } from "next/server";
 import { logMonitoringEvent } from "@/lib/monitoring";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const REFRESH_STALE_AFTER_MS = 30 * 60 * 60 * 1_000;
-const REFRESH_STUCK_AFTER_MS = 15 * 60 * 1_000;
-const AI_SPIKE_WINDOW_MS = 15 * 60 * 1_000;
 const AI_SPIKE_USER_THRESHOLD = 5;
 
-type SourceHealth = {
-  source_key: string;
-  status: string;
+type OperationalHealth = {
+  unhealthy_sources: string[] | null;
+  refresh_status: "ok" | "stale" | "failed" | "missing";
+  refresh_triggered_at: string | null;
+  refresh_finished_at: string | null;
+  ai_users_at_limit: number;
 };
 
 export async function GET() {
   const checkedAt = new Date();
 
   try {
-    const admin = createAdminClient();
-    const aiWindowStart = new Date(checkedAt.getTime() - AI_SPIKE_WINDOW_MS).toISOString();
-    const [{ data: sources, error: sourceError }, { data: refresh, error: refreshError }, aiResult] =
-      await Promise.all([
-        admin.from("job_source_health").select("source_key,status").eq("enabled", true),
-        admin
-          .from("job_refresh_runs")
-          .select("status,triggered_at,finished_at")
-          .order("triggered_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        admin
-          .from("ai_rate_limits")
-          .select("user_id", { count: "exact", head: true })
-          .gte("request_count", 10)
-          .gte("updated_at", aiWindowStart),
-      ]);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_jobcraft_operational_health");
+    if (error) throw error;
 
-    if (sourceError || refreshError || aiResult.error) {
-      throw sourceError ?? refreshError ?? aiResult.error;
-    }
+    const health = (data?.[0] ?? null) as OperationalHealth | null;
+    if (!health) throw new Error("Operational health RPC returned no result.");
 
-    const unhealthySources = ((sources ?? []) as SourceHealth[])
-      .filter((source) => source.status === "degraded" || source.status === "error")
-      .map((source) => source.source_key);
-    const refreshAgeMs = refresh?.triggered_at
-      ? checkedAt.getTime() - new Date(refresh.triggered_at).getTime()
-      : Number.POSITIVE_INFINITY;
-    const refreshStale = !Number.isFinite(refreshAgeMs) || refreshAgeMs > REFRESH_STALE_AFTER_MS;
-    const refreshFailed =
-      !refresh ||
-      refresh.status === "failed" ||
-      (refresh.status === "running" && refreshAgeMs > REFRESH_STUCK_AFTER_MS);
-    const aiUsersAtLimit = aiResult.count ?? 0;
+    const unhealthySources = health.unhealthy_sources ?? [];
+    const refreshFailed = health.refresh_status === "failed" || health.refresh_status === "missing";
+    const refreshStale = health.refresh_status === "stale";
+    const aiUsersAtLimit = Number(health.ai_users_at_limit ?? 0);
     const aiSpike = aiUsersAtLimit >= AI_SPIKE_USER_THRESHOLD;
     const status = unhealthySources.length || refreshStale || refreshFailed || aiSpike ? "degraded" : "ok";
 
     if (status !== "ok") {
       logMonitoringEvent("warn", "operational_health_degraded", {
         unhealthySources,
-        refreshStatus: refresh?.status ?? "missing",
+        refreshStatus: health.refresh_status,
         refreshStale,
         aiUsersAtLimit,
       });
@@ -75,9 +52,9 @@ export async function GET() {
             unhealthySources,
           },
           refresh: {
-            status: refreshFailed ? "failed" : refreshStale ? "stale" : "ok",
-            lastRunAt: refresh?.triggered_at ?? null,
-            lastCompletedAt: refresh?.finished_at ?? null,
+            status: health.refresh_status,
+            lastRunAt: health.refresh_triggered_at,
+            lastCompletedAt: health.refresh_finished_at,
           },
           aiRateLimits: {
             status: aiSpike ? "spike" : "ok",

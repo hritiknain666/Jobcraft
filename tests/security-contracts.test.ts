@@ -47,11 +47,19 @@ test("production monitoring checks health and provider degradation", () => {
   const workflow = source(".github/workflows/monitor-production.yml");
   const worker = source("wrangler.jsonc");
   const health = source("app/api/health/route.ts");
+  const migration = source("supabase/migrations/20260827091848_add_operational_health_rpc.sql");
 
   assert.match(workflow, /cron:\s*"\*\/15 \* \* \* \*"/i);
   assert.match(workflow, /\/api\/health/);
   assert.match(workflow, /\/api\/jobs\/provider-status/);
   assert.match(worker, /"observability"[\s\S]*"head_sampling_rate": 1/i);
   assert.match(health, /aiRateLimits[\s\S]*usersAtLimit15m/);
-  assert.match(health, /job_refresh_runs/);
+  assert.match(health, /get_jobcraft_operational_health/);
+  assert.match(migration, /security definer/i);
+  assert.match(migration, /set search_path = pg_catalog, public/i);
+  assert.match(migration, /revoke all on function public\.get_jobcraft_operational_health\(\) from public/i);
+  assert.match(migration, /grant execute on function public\.get_jobcraft_operational_health\(\) to anon, authenticated, service_role/i);
+  assert.match(migration, /job_source_health/);
+  assert.match(migration, /job_refresh_runs/);
+  assert.match(migration, /ai_rate_limits/);
 });
