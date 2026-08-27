@@ -63,3 +63,17 @@ test("production monitoring checks health and provider degradation", () => {
   assert.match(migration, /job_refresh_runs/);
   assert.match(migration, /ai_rate_limits/);
 });
+
+test("IndianAPI is retired from every executable refresh path", () => {
+  const edgeRefresh = source("supabase/functions/refresh-free-jobs/index.ts");
+  const appRefresh = source("app/api/jobs/refresh/route.ts");
+  const runner = source("lib/job-sources/provider-runner.ts");
+  const config = source("lib/job-sources/config.ts");
+  const migration = source("supabase/migrations/20260827092817_retire_indianapi_source.sql");
+
+  for (const runtimeSource of [edgeRefresh, appRefresh, runner, config]) {
+    assert.doesNotMatch(runtimeSource, /IndianAPI|indianapi|INDIANAPI/);
+  }
+  assert.match(migration, /set is_active = false[\s\S]*source = 'IndianAPI'/i);
+  assert.match(migration, /enabled = false[\s\S]*status = 'disabled'/i);
+});

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import {
   getAdzunaConfig,
   getGreenhouseBoards,
-  getIndianApiConfig,
   getJoobleConfig,
   getLeverSites,
   getTheirStackConfig,
@@ -86,7 +85,6 @@ export async function POST(request: Request) {
     { provider: "remotive", resultsPerPage: 100 },
   ];
 
-  if (getIndianApiConfig()) inputs.push({ provider: "indianapi", resultsPerPage: 50 });
   if (getJoobleConfig()) {
     inputs.push({ provider: "jooble", page: 1, resultsPerPage: 25 });
     inputs.push({ provider: "jooble", page: 2, resultsPerPage: 25 });

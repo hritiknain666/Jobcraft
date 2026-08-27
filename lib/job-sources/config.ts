@@ -35,11 +35,6 @@ export function getAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaCon
   return { appId, appKey };
 }
 
-export function getIndianApiConfig(env: NodeJS.ProcessEnv = process.env): ApiKeyConfig | null {
-  const apiKey = readSecret(env.INDIANAPI_JOBS_API_KEY);
-  return apiKey ? { apiKey } : null;
-}
-
 export function getJoobleConfig(env: NodeJS.ProcessEnv = process.env): ApiKeyConfig | null {
   const apiKey = readSecret(env.JOOBLE_API_KEY);
   return apiKey ? { apiKey } : null;
@@ -91,12 +86,6 @@ export function isFreePublicSourceEnabled(env: NodeJS.ProcessEnv = process.env) 
 export function requireAdzunaConfig(env: NodeJS.ProcessEnv = process.env): AdzunaConfig {
   const config = getAdzunaConfig(env);
   if (!config) throw new Error("Adzuna access is disabled until ADZUNA_APP_ID and ADZUNA_APP_KEY are configured.");
-  return config;
-}
-
-export function requireIndianApiConfig(env: NodeJS.ProcessEnv = process.env): ApiKeyConfig {
-  const config = getIndianApiConfig(env);
-  if (!config) throw new Error("IndianAPI access is disabled until INDIANAPI_JOBS_API_KEY is configured.");
   return config;
 }
 

@@ -2,7 +2,6 @@ import { getGreenhouseBoards, getLeverSites, isAdzunaPublishingReady, isFreePubl
 import { fetchAdzunaIndia } from "./fetch-adzuna";
 import { fetchArbeitnow } from "./fetch-arbeitnow";
 import { fetchGreenhouseBoard } from "./fetch-greenhouse";
-import { fetchIndianApiJobs } from "./fetch-indianapi";
 import { fetchJoobleIndia } from "./fetch-jooble";
 import { fetchLeverSite } from "./fetch-lever";
 import { fetchRemotive } from "./fetch-remotive";
@@ -10,7 +9,6 @@ import { fetchTheirStackIndia } from "./fetch-theirstack";
 import { normalizeAdzunaIndia } from "./providers/adzuna";
 import { normalizeArbeitnowIndia } from "./providers/arbeitnow";
 import { normalizeGreenhouseIndia } from "./providers/greenhouse";
-import { normalizeIndianApiJobs } from "./providers/indianapi";
 import { normalizeJoobleIndia } from "./providers/jooble";
 import { normalizeLeverIndia } from "./providers/lever";
 import { normalizeRemotiveIndia } from "./providers/remotive";
@@ -79,18 +77,6 @@ export async function loadProviderBatch(input: ProviderImportInput): Promise<Pro
       provider: "Remotive",
       jobs: normalizeRemotiveIndia(payload),
       providerReportedCount: payload["job-count"] ?? null,
-      canPersist: isFreePublicSourceEnabled(),
-      persistenceReason: "Free public job sources are disabled by configuration.",
-    };
-  }
-
-  if (provider === "indianapi") {
-    const payload = await fetchIndianApiJobs(resultsPerPage);
-    const jobs = normalizeIndianApiJobs(payload);
-    return {
-      provider: "IndianAPI",
-      jobs,
-      providerReportedCount: Array.isArray(payload) ? payload.length : payload.jobs?.length ?? payload.data?.length ?? null,
       canPersist: isFreePublicSourceEnabled(),
       persistenceReason: "Free public job sources are disabled by configuration.",
     };

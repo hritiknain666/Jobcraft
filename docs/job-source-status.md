@@ -6,7 +6,6 @@ This document records the intended non-AI MVP source mix and operational safegua
 
 ### Aggregated/public feeds
 
-- IndianAPI — API-key source focused on India.
 - Himalayas — public remote-jobs feed; India/worldwide eligible roles only.
 - Jobicy — public remote-jobs feed; India/worldwide eligible roles only.
 - Remotive — public remote-jobs feed; India/worldwide eligible roles only.
@@ -19,6 +18,8 @@ This document records the intended non-AI MVP source mix and operational safegua
 - Lever — public published-job GET endpoints. JobCraft only ingests explicitly configured employer sites. Current production sites: Hevo Data, Acceldata, and Level AI.
 
 Direct ATS feeds are full snapshots. If a posting disappears from a configured employer feed, JobCraft deactivates the corresponding listing.
+
+IndianAPI was retired on 2026-08-27. Its 50 historical records were retained for audit purposes and all active listings were deactivated.
 
 ## Adzuna
 

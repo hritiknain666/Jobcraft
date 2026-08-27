@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   getAdzunaConfig,
   getGreenhouseBoards,
-  getIndianApiConfig,
   getJoobleConfig,
   getLeverSites,
   getTheirStackConfig,
@@ -12,12 +11,10 @@ import {
   isAdzunaPublishingReady,
   isFreePublicSourceEnabled,
 } from "../lib/job-sources/config";
-import { retryDelayMs } from "../lib/job-sources/fetch-indianapi";
 import { extractJobMetadata } from "../lib/job-sources/extract-metadata";
 import { normalizeJob } from "../lib/job-sources/normalize";
 import { normalizeArbeitnowIndia } from "../lib/job-sources/providers/arbeitnow";
 import { normalizeGreenhouseIndia } from "../lib/job-sources/providers/greenhouse";
-import { normalizeIndianApiJobs } from "../lib/job-sources/providers/indianapi";
 import { normalizeJoobleIndia } from "../lib/job-sources/providers/jooble";
 import { normalizeLeverIndia } from "../lib/job-sources/providers/lever";
 import { normalizeRemotiveIndia } from "../lib/job-sources/providers/remotive";
@@ -101,13 +98,11 @@ test("Adzuna persisted publishing requires approval and attribution readiness", 
 
 test("free source configuration parses keys and curated ATS lists", () => {
   const values = env({
-    INDIANAPI_JOBS_API_KEY: " india-key ",
     JOOBLE_API_KEY: " jooble-key ",
     THEIRSTACK_API_KEY: " stack-key ",
     GREENHOUSE_BOARD_TOKENS: "companyone, companytwo",
     LEVER_SITES: "acme|Acme India, example|Example Labs",
   });
-  assert.deepEqual(getIndianApiConfig(values), { apiKey: "india-key" });
   assert.deepEqual(getJoobleConfig(values), { apiKey: "jooble-key" });
   assert.deepEqual(getTheirStackConfig(values), { apiKey: "stack-key" });
   assert.deepEqual(getGreenhouseBoards(values), ["companyone", "companytwo"]);
@@ -190,15 +185,6 @@ test("Lever normalizer uses official workplace type and annual INR salary", () =
   assert.equal(jobs[0].salaryMaxLpa, 18);
 });
 
-test("IndianAPI normalizer extracts explicit experience and skills", () => {
-  const jobs = normalizeIndianApiJobs([{ id: 7, title: "Data Analyst", company: "Example", location: "Mumbai", experience: "2-4 years", job_description: "Use SQL and Power BI in a hybrid role.", apply_link: "https://example.com/jobs/7", posted_date: "2026-08-01T00:00:00Z" }]);
-  assert.equal(jobs.length, 1);
-  assert.equal(jobs[0].experienceMin, 2);
-  assert.equal(jobs[0].experienceMax, 4);
-  assert.equal(jobs[0].workMode, "Hybrid");
-  assert.deepEqual(jobs[0].skills, ["SQL", "Power BI"]);
-});
-
 test("Jooble normalizer keeps provider links and evidence-only metadata", () => {
   const jobs = normalizeJoobleIndia({ totalCount: 1, jobs: [{ id: 99, title: "Business Analyst", company: "Example", location: "Delhi", snippet: "On-site role using Excel and SQL", link: "https://in.jooble.org/jdp/99", updated: "2026-08-01T00:00:00Z" }] });
   assert.equal(jobs.length, 1);
@@ -213,11 +199,4 @@ test("TheirStack converts only annual INR salary values to LPA", () => {
   assert.equal(jobs[0].salaryMaxLpa, 30);
   assert.equal(jobs[0].workMode, "Remote");
   assert.ok(jobs[0].skills.some((skill) => skill.toLowerCase() === "snowflake"));
-});
-
-test("IndianAPI retry backoff respects Retry-After and exponential delays", () => {
-  assert.equal(retryDelayMs("2", 0, 0), 2_000);
-  assert.equal(retryDelayMs(null, 0, 0), 500);
-  assert.equal(retryDelayMs(null, 2, 0), 2_000);
-  assert.equal(retryDelayMs("999", 0, 0), 30_000);
 });

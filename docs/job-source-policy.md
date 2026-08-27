@@ -4,17 +4,16 @@ This document is an engineering/compliance checklist for the non-AI MVP. It is n
 
 ## MVP source set
 
-JobCraft's source architecture is intentionally limited to nine provider families:
+JobCraft's source architecture is intentionally limited to eight provider families:
 
-1. IndianAPI — India-focused aggregator; keyed and enabled in production.
-2. Himalayas — public remote-jobs feed with India eligibility filtering.
-3. Jobicy — public remote-jobs feed with India/worldwide eligibility filtering.
-4. Remotive — public remote-jobs API with provider attribution and backlink.
-5. Remote OK — public remote-jobs feed with conservative India/worldwide filtering.
-6. TheirStack — broad aggregator; keyed and deliberately low-volume while using free credits.
-7. Greenhouse — curated public employer job-board snapshots. Production currently includes PhonePe.
-8. Lever — curated public employer posting snapshots. Production currently includes Hevo Data, Acceldata and Level AI.
-9. Adzuna — connector is production-ready but publishing remains disabled until credentials, provider/commercial approval and required attribution are all confirmed.
+1. Himalayas — public remote-jobs feed with India eligibility filtering.
+2. Jobicy — public remote-jobs feed with India/worldwide eligibility filtering.
+3. Remotive — public remote-jobs API with provider attribution and backlink.
+4. Remote OK — public remote-jobs feed with conservative India/worldwide filtering.
+5. TheirStack — broad aggregator; keyed and deliberately low-volume while using free credits.
+6. Greenhouse — curated public employer job-board snapshots. Production currently includes PhonePe.
+7. Lever — curated public employer posting snapshots. Production currently includes Hevo Data, Acceldata and Level AI.
+8. Adzuna — connector is production-ready but publishing remains disabled until credentials, provider/commercial approval and required attribution are all confirmed.
 
 Jooble and Arbeitnow remain non-core backup code only. They are not part of the normal scheduled MVP source set.
 
@@ -76,12 +75,6 @@ Official site exposes a Remote Jobs API/JSON feed: https://remoteok.com/
 JobCraft implementation is deliberately conservative: visible source attribution, provider/application URL, India/worldwide eligibility filtering and one refresh per day.
 
 ## Core keyed sources
-
-### IndianAPI
-
-Production secret: `INDIANAPI_JOBS_API_KEY` in Supabase Edge Function secrets.
-
-JobCraft keeps provider identity, provider application URL and evidence-only normalization. Listings below the feed quality threshold are not kept active.
 
 ### TheirStack
 

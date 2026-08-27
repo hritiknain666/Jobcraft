@@ -6,7 +6,7 @@ JobCraft's non-AI MVP refreshes approved/public job feeds from Supabase Edge Fun
 
 Two authenticated Edge Functions share the same Supabase Cron/Vault infrastructure:
 
-- `refresh-free-jobs` — six general sources, daily at `02:17 UTC`.
+- `refresh-free-jobs` — five general sources, daily at `02:17 UTC`.
 - `refresh-ats-jobs` — curated Greenhouse/Lever employer snapshots plus gated Adzuna, daily at `02:25 UTC`.
 - `jobcraft-feed-maintenance-daily` — quality, dedupe and source-health maintenance at `02:35 UTC`.
 
@@ -20,7 +20,6 @@ Authentication uses a long random cron token stored in Supabase Vault; only its 
 - Jobicy
 - Himalayas
 - Remote OK
-- IndianAPI when `INDIANAPI_JOBS_API_KEY` exists
 - TheirStack when `THEIRSTACK_API_KEY` exists
 
 Jooble and Arbeitnow are not part of the normal production schedule.

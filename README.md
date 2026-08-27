@@ -43,7 +43,6 @@ The refresh runs daily, normalizes provider data, keeps only India-eligible role
 
 Additional free-account connectors are prepared and remain dormant until their server-side keys are configured:
 
-- IndianAPI
 - Jooble
 - TheirStack
 
@@ -92,7 +91,6 @@ The active no-key Supabase refresh does not require Cloudflare to hold the Supab
 Free-account Edge Function secrets, when obtained, use these names:
 
 ```text
-INDIANAPI_JOBS_API_KEY
 JOOBLE_API_KEY
 THEIRSTACK_API_KEY
 ```

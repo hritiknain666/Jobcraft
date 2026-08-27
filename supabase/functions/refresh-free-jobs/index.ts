@@ -19,7 +19,7 @@ type JobRow = {
   posted_at: string;
 };
 
-type SourceResult = { source: string; jobs: JobRow[]; error?: string; rateLimited?: boolean };
+type SourceResult = { source: string; jobs: JobRow[]; error?: string };
 
 type LocationRestriction = string | {
   alpha2?: unknown;
@@ -27,12 +27,6 @@ type LocationRestriction = string | {
   name?: unknown;
   slug?: unknown;
 };
-
-class HttpError extends Error {
-  constructor(message: string, readonly status: number) {
-    super(message);
-  }
-}
 
 const SKILLS: Array<[string, RegExp]> = [
   ["SQL", /\bsql\b/i], ["Power BI", /\bpower\s*bi\b/i], ["Excel", /\b(?:microsoft\s+|ms\s+)?excel\b/i],
@@ -102,43 +96,10 @@ function inferMode(title: string, description: string, fallback: JobRow["work_mo
   return fallback;
 }
 
-function experienceRange(value: unknown): [number | null, number | null] {
-  const v = text(value, 250);
-  const range = v.match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(?:years?|yrs?)/i);
-  if (range) return [Number(range[1]), Number(range[2])];
-  const one = v.match(/(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)/i);
-  return one ? [Number(one[1]), null] : [null, null];
-}
-
 async function fetchJson(url: string, init: RequestInit = {}) {
   const response = await fetch(url, { ...init, headers: { "User-Agent": "JobCraft/1.0 job discovery for candidates", ...(init.headers ?? {}) }, signal: AbortSignal.timeout(20_000) });
-  if (!response.ok) throw new HttpError(`${response.status} ${response.statusText}`, response.status);
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   return await response.json();
-}
-
-function retryDelayMs(retryAfter: string | null, attempt: number) {
-  if (retryAfter) {
-    const seconds = Number(retryAfter);
-    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, 30_000);
-    const dateDelay = new Date(retryAfter).getTime() - Date.now();
-    if (Number.isFinite(dateDelay) && dateDelay > 0) return Math.min(dateDelay, 30_000);
-  }
-  return Math.min(500 * 2 ** attempt, 4_000);
-}
-
-async function fetchIndianApiJson(apiKey: string) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch("https://jobs.indianapi.in/jobs?limit=50", {
-      headers: { "User-Agent": "JobCraft/1.0 job discovery for candidates", "X-Api-Key": apiKey, Accept: "application/json" },
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (response.ok) return await response.json();
-    if ((response.status !== 429 && response.status < 500) || attempt === 2) {
-      throw new HttpError(`${response.status} ${response.statusText}`, response.status);
-    }
-    await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response.headers.get("Retry-After"), attempt)));
-  }
-  throw new HttpError("IndianAPI retries exhausted", 429);
 }
 
 async function remotive(): Promise<SourceResult> {
@@ -217,27 +178,6 @@ async function remoteOk(): Promise<SourceResult> {
   } catch (e) { return { source: "Remote OK", jobs: [], error: e instanceof Error ? e.message : "Unknown error" }; }
 }
 
-async function indianApi(apiKey: string): Promise<SourceResult> {
-  try {
-    const payload = await fetchIndianApiJson(apiKey);
-    const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.jobs) ? payload.jobs : Array.isArray(payload?.data) ? payload.data : [];
-    const jobs: JobRow[] = [];
-    for (const raw of rows) {
-      const title = text(raw?.title ?? raw?.job_title, 300), company = text(raw?.company ?? raw?.company_name, 300), description = text(raw?.job_description ?? raw?.description);
-      const id = raw?.id ?? raw?.job_id ?? raw?.external_id;
-      const applyUrl = safeUrl(raw?.apply_link ?? raw?.apply_url ?? raw?.url);
-      if (id === null || id === undefined || !title || !company || description.length < 40 || !applyUrl) continue;
-      const [experienceMin, experienceMax] = experienceRange(raw?.experience ?? raw?.experience_required);
-      const sourceSkills = Array.isArray(raw?.skills) ? raw.skills : typeof raw?.skills === "string" ? raw.skills.split(/[,|]/) : [];
-      jobs.push({ source: "IndianAPI", external_id: String(id), title, company, location: text(raw?.location, 300) || "India", work_mode: inferMode(title, description), experience_min: experienceMin, experience_max: experienceMax, salary_min_lpa: null, salary_max_lpa: null, skills: skillsFor(title, description, sourceSkills), description, apply_url: applyUrl, is_active: true, posted_at: validIso(raw?.posted_date ?? raw?.posted_at ?? raw?.date_posted) });
-    }
-    return { source: "IndianAPI", jobs };
-  } catch (e) {
-    if (e instanceof HttpError && e.status === 429) return { source: "IndianAPI", jobs: [], rateLimited: true };
-    return { source: "IndianAPI", jobs: [], error: e instanceof Error ? e.message : "Unknown error" };
-  }
-}
-
 async function theirStack(apiKey: string): Promise<SourceResult> {
   try {
     const discoveredSince = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
@@ -283,21 +223,14 @@ Deno.serve(async (req) => {
   if (runError || !run?.id) return Response.json({ error: "Could not create refresh audit record" }, { status: 500 });
 
   try {
-    const indianKey = Deno.env.get("INDIANAPI_JOBS_API_KEY")?.trim();
     const theirStackKey = Deno.env.get("THEIRSTACK_API_KEY")?.trim();
     const loaders: Promise<SourceResult>[] = [remotive(), jobicy(), himalayas(), remoteOk()];
-    if (indianKey) loaders.push(indianApi(indianKey));
     if (theirStackKey) loaders.push(theirStack(theirStackKey));
     const results = await Promise.all(loaders);
 
     const summary: Record<string, unknown> = {};
     let failed = 0, imported = 0;
     for (const result of results) {
-      if (result.rateLimited) {
-        console.warn({ event: "provider_rate_limited", provider: result.source });
-        summary[result.source] = { source: result.source, display_name: result.source, configured: true, enabled: true, fetched: 0, upserted: 0, rate_limited: true };
-        continue;
-      }
       if (result.error) {
         console.error({ event: "provider_refresh_failed", provider: result.source, error: result.error });
         failed += 1;
@@ -318,7 +251,6 @@ Deno.serve(async (req) => {
       summary[result.source] = { source: result.source, display_name: result.source, configured: true, enabled: true, fetched: result.jobs.length, upserted };
     }
 
-    if (!indianKey) summary.IndianAPI = { source: "IndianAPI", display_name: "IndianAPI", configured: false, enabled: false, disabled: true, fetched: 0, upserted: 0 };
     if (!theirStackKey) summary.TheirStack = { source: "TheirStack", display_name: "TheirStack", configured: false, enabled: false, disabled: true, fetched: 0, upserted: 0 };
 
     const status = failed === 0 ? "success" : failed < results.length ? "partial" : "failed";

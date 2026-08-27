@@ -21,7 +21,6 @@ Completed:
 
 Optional free-account sources still requiring user-created keys:
 
-- [ ] Create IndianAPI account/key and store as `INDIANAPI_JOBS_API_KEY` in Supabase Edge Function secrets
 - [ ] Create Jooble API key and store as `JOOBLE_API_KEY`
 - [ ] Create TheirStack free API key and store as `THEIRSTACK_API_KEY`
 - [ ] Trigger/observe the next refresh and verify each newly enabled provider before relying on it
