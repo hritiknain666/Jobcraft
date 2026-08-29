@@ -32,9 +32,25 @@ jobs:
           echo "Operational health: ${HEALTH}"
           HEALTH_JSON="${HEALTH}" node <<'NODE'
           const health = JSON.parse(process.env.HEALTH_JSON);
-          if (health?.status !== "ok") {
-            console.error(`Operational health alert: ${JSON.stringify(health?.checks ?? health)}`);
+          const checks = health?.checks ?? {};
+          const refreshStatus = checks?.refresh?.status;
+          const aiStatus = checks?.aiRateLimits?.status;
+
+          const criticalFailure =
+            health?.status === "unhealthy" ||
+            checks?.database !== "ok" ||
+            ["failed", "missing", "stale"].includes(refreshStatus) ||
+            aiStatus === "spike";
+
+          if (criticalFailure) {
+            console.error(`Operational health alert: ${JSON.stringify(checks)}`);
             process.exit(1);
+          }
+
+          if (checks?.providers?.status === "degraded") {
+            console.warn(
+              `Provider warning: ${(checks.providers.unhealthySources ?? []).join(", ") || "degraded"}`,
+            );
           }
           NODE
 
@@ -47,11 +63,22 @@ jobs:
           echo "Provider health: ${PROVIDERS}"
           PROVIDER_JSON="${PROVIDERS}" node <<'NODE'
           const providers = JSON.parse(process.env.PROVIDER_JSON);
-          if (providers?.status !== "healthy") {
-            const unhealthy = Array.isArray(providers?.sources)
-              ? providers.sources.filter((source) => ["degraded", "error"].includes(source?.status)).map((source) => source?.source_key)
-              : [];
-            console.error(`Provider degradation alert: ${unhealthy.join(", ") || "status unavailable"}`);
+          const sources = Array.isArray(providers?.sources) ? providers.sources : [];
+          const errorSources = sources
+            .filter((source) => source?.status === "error")
+            .map((source) => source?.source_key);
+          const degradedSources = sources
+            .filter((source) => source?.status === "degraded")
+            .map((source) => source?.source_key);
+
+          if (providers?.status === "unavailable" || errorSources.length > 0) {
+            console.error(
+              `Provider failure alert: ${errorSources.join(", ") || "provider status unavailable"}`,
+            );
             process.exit(1);
+          }
+
+          if (degradedSources.length > 0) {
+            console.warn(`Provider degradation warning: ${degradedSources.join(", ")}`);
           }
           NODE
