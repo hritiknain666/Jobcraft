@@ -5,6 +5,7 @@ import AuthModal from "@/components/auth-modal";
 import AuthNavigationBridge from "@/components/auth-navigation-bridge";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
+import "./marketing-home.css";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://jobcraft.hritiknain666-35e.workers.dev";
@@ -13,17 +14,18 @@ const IS_TEMPORARY_HOST = new URL(SITE_URL).hostname.endsWith(".workers.dev");
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "JobCraft | Career Platform for India",
+    default: "JobCraft | Your Career, More Clearly",
     template: "%s | JobCraft",
   },
   description:
-    "Find better-fit jobs, improve your resume, and manage your job search with career tools built for the Indian market.",
+    "Discover job opportunities, strengthen your resume, and organise your job search with career tools built to help you take your next step.",
   applicationName: "JobCraft",
   keywords: [
-    "jobs India",
+    "job search",
+    "career platform",
     "job matching",
     "resume builder",
-    "career assistant",
+    "career tools",
     "application tracker",
   ],
   robots: {
@@ -33,16 +35,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "JobCraft",
-    title: "JobCraft | Career Platform for India",
+    title: "JobCraft | Your Career, More Clearly",
     description:
-      "Find better-fit jobs, improve your resume, and manage your job search with career tools built for the Indian market.",
+      "Discover job opportunities, strengthen your resume, and organise your job search with career tools built to help you take your next step.",
     url: SITE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "JobCraft | Career Platform for India",
+    title: "JobCraft | Your Career, More Clearly",
     description:
-      "Find better-fit jobs, improve your resume, and manage your job search with career tools built for the Indian market.",
+      "Discover job opportunities, strengthen your resume, and organise your job search with career tools built to help you take your next step.",
   },
 };
 
