@@ -90,7 +90,7 @@ export default function MarketingHome() {
       <section className="marketing-trust-strip" aria-label="Platform principles">
         <span>BUILT FOR YOUR NEXT MOVE</span>
         <div><i>✳</i> Career tools in one place</div>
-        <div><i>↗</i> Opportunities across locations</div>
+        <div><i>↗</i> Explore roles that fit</div>
         <div><i>◷</i> Your search, clearly tracked</div>
       </section>
 
